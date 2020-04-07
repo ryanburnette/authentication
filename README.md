@@ -68,12 +68,8 @@ app.get('/me', authentication.authorize, function (req, res) {
 });
 
 app.get('/me/sessions', authentication.authorize, function (req, res) {
-  authentication.sessions.then(function (sessions) {
-    res.json(
-      sessions.filter(function (el) {
-        return el.email == req.user.email;
-      })
-    );
+  authentication.sessions(req.user.email).then(function (sessions) {
+    res.json(sessions);
   });
 });
 ```

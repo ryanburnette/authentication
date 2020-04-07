@@ -1,0 +1,13 @@
+{
+  "name": "@ryanburnette/authentication",
+  "version": "1.0.0",
+  "description": "A Node.js authentication library.",
+  "main": "index.js",
+  "scripts": {},
+  "author": "Ryan Burnette <ryan.burnette@gmail.com>",
+  "license": "ISC",
+  "dependencies": {
+    "ejs": "^3.0.2",
+    "mailgun-js": "^0.22.0"
+  }
+}
