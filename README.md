@@ -1,4 +1,4 @@
-# [authentication](https://www.npmjs.com/package/@ryanburnette/authentication)
+# [authentication](https://github.com/ryanburnette/authentication)
 
 [![repo](https://img.shields.io/badge/repository-Github-black.svg?style=flat-square)](https://github.com/ryanburnette/authentication)
 [![npm](https://img.shields.io/badge/package-NPM-green.svg?style=flat-square)](https://www.npmjs.com/package/@ryanburnette/authentication)
