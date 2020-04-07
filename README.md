@@ -10,9 +10,9 @@ You get back a few functions:
 
 - `findUser` A function to find a user by email address.
 - `request` A function to allow users to request a token by email.
-- `authorize` Express middleware for authorizing requests. It expects a user to
-  the bearer of their token. If the request isn't authorized, it sends a 401
-  status code.
+- `authorize` Express middleware for authorizing requests. Requests should pass
+  the token as `Authorization: Bearer [token]`. If the request isn't authorized,
+  it sends a 401 status code.
 
 You can also see the data:
 
