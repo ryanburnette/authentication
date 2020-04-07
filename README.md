@@ -5,6 +5,10 @@
 
 A Node.js authentication library.
 
+> This library is not a suggestion of the right way to do anything, or advice on
+> how you should do something. It's just how I do it on some of the apps I work
+> on.
+
 ## What this library does
 
 You give this library some options, a list of users, and Mailgun credentials.
