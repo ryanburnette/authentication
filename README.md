@@ -26,30 +26,35 @@ npm install @ryanburnette/authentication
 
 ```js
 var authentication = require('@ryanburnette/authentication')({
-  app: {
-    name: 'my-app',
-    email: 'no-reply@ryanburnette.com'
-  },
   users: [
     {
       name: 'Ryan Burnette',
       email: 'ryan.burnette@gmail.com'
     }
   ],
-  mailgun: {
-    apiKey: '',
-    domain: ''
+  email: {
+    mailgun: {
+      apiKey: '',
+      domain: ''
+    },
+    signin: {
+      subject: 'Sign in to my app',
+      html:
+        '<p>Sign in to my app.</p><p><a href="<%= url %>">Click here</a></p>',
+      text: ''
+    }
   },
   storage: require('@ryanburnette/authentication-storage-fs')
 });
 
 app.get('/request', function (req, res) {
   var email = req.body;
-  var user = authentication.users(email);
-  if (user) {
-    authentication.request(user.email);
-  }
-  res.sendStatus(200);
+  authentication.users(email).then(function (user) {
+    if (user) {
+      authentication.request(user.email);
+    }
+    res.sendStatus(200);
+  });
 });
 
 app.get('/me', authentication.authorize, function (req, res) {
@@ -57,10 +62,13 @@ app.get('/me', authentication.authorize, function (req, res) {
 });
 
 app.get('/me/sessions', authentication.authorize, function (req, res) {
-  var sessions = authentication.sessions.filter(function (el) {
-    return el.email == req.user.email;
+  authentication.sessions.then(function (sessions) {
+    res.json(
+      sessions.filter(function (el) {
+        return el.email == req.user.email;
+      })
+    );
   });
-  res.json(sessions);
 });
 ```
 
