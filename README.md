@@ -50,12 +50,17 @@ var authentication = require('@ryanburnette/authentication')({
 
 app.get('/authenticate', function (req, res) {
   var email = req.body;
-  authentication.users(email).then(function (user) {
-    if (user) {
-      authentication.authenticate(user.email);
-    }
-    res.sendStatus(200);
-  });
+  authentication
+    .users(email)
+    .then(function (user) {
+      if (user) {
+        authentication.authenticate(user.email);
+      }
+    })
+    .catch(function (err) {
+      console.error(err);
+    });
+  res.sendStatus(200);
 });
 
 app.get('/me', authentication.authorize, function (req, res) {
