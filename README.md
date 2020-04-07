@@ -29,6 +29,7 @@ authentication strategy.
   the sessions for that user.
 - `signin(email)` Start the authentication process. Email the user an
   exchangeToken that they'll trade for their token.
+- `signout(token|id)` Sign a session out.
 - `exchange(exchangeToken)` Complete the authentication process. Exhcange an
   exchagneToken for a token.
 - `authorize(req, res, next)` Express middleware for authorizing requests.
@@ -69,13 +70,13 @@ var authentication = {
   storage: require('@ryanburnette/authentication-storage-fs')
 };
 
-app.get('/authenticate', function (req, res) {
+app.get('/signin', function (req, res) {
   var email = req.body;
   authentication
     .users(email)
     .then(function (user) {
       if (user) {
-        authentication.authenticate(user.email);
+        authentication.signin(user.email);
       }
     })
     .catch(function (err) {
@@ -84,14 +85,49 @@ app.get('/authenticate', function (req, res) {
   res.sendStatus(200);
 });
 
-app.get('/me', authentication.authorize, function (req, res) {
+app.get('/exchange', function (req, res) {
+  var exchangeToken = req.body;
+  authentication
+    .exchange(exchangeToken)
+    .then(function (token) {
+      if (token) {
+        res.send(token);
+      } else {
+        res.sendStatus(401);
+      }
+    })
+    .catch(function (err) {
+      console.error(err);
+      res.sendStatus(500);
+    });
+});
+
+app.get('/user', authentication.authorize, function (req, res) {
   res.json(req.user);
 });
 
-app.get('/me/sessions', authentication.authorize, function (req, res) {
-  authentication.sessions(req.user.email).then(function (sessions) {
-    res.json(sessions);
-  });
+app.get('/sessions', authentication.authorize, function (req, res) {
+  authentication
+    .sessions(req.user.email)
+    .then(function (sessions) {
+      res.json(sessions);
+    })
+    .catch(function (err) {
+      console.error(err);
+      res.sendStatus(500);
+    });
+});
+
+app.get('/signout', authentication.authorize, function (req, res) {
+  authentication
+    .signout(req.token)
+    .then(function () {
+      res.sendStatus(200);
+    })
+    .catch(function (err) {
+      console.error(err);
+      res.sendStatus(500);
+    });
 });
 ```
 
