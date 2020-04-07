@@ -33,7 +33,7 @@ authentication strategy.
 - `exchange(exchangeToken)` Complete the authentication process. Exhcange an
   exchagneToken for a token.
 - `authorize(req, res, next)` Express middleware for authorizing requests.
-  Requests should pass set `Authorization: Bearer [token]`. If the request isn't
+  Requests should set `Authorization: Bearer [token]`. If the request isn't
   authorized, return 401.
 
 ## Usage
