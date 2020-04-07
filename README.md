@@ -13,7 +13,8 @@ You get back a few functions:
 - `sessions` Get an array of the session objects. A session is just an unexpired
   token, but it also keeps track of the `ip` and `ua` of the requesting browser.
   Include an email address as the argument to get the sessions for that user.
-- `request` A function to allow users to request a token by email.
+- `authenticate` A function to allow users to authenticate by having a token
+  sent to their email address.
 - `authorize` Express middleware for authorizing requests. Requests should pass
   the token as `Authorization: Bearer [token]`. If the request isn't authorized,
   it receives a 401 status.
@@ -47,11 +48,11 @@ var authentication = require('@ryanburnette/authentication')({
   storage: require('@ryanburnette/authentication-storage-fs')
 });
 
-app.get('/request', function (req, res) {
+app.get('/authenticate', function (req, res) {
   var email = req.body;
   authentication.users(email).then(function (user) {
     if (user) {
-      authentication.request(user.email);
+      authentication.authenticate(user.email);
     }
     res.sendStatus(200);
   });
