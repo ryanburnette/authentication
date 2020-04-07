@@ -1,4 +1,7 @@
-# @ryanburnette/authentication
+# [authentication](https://www.npmjs.com/package/@ryanburnette/authentication)
+
+[![repo](https://img.shields.io/badge/repository-Github-black.svg?style=flat-square)](https://github.com/ryanburnette/authentication)
+[![npm](https://img.shields.io/badge/package-NPM-green.svg?style=flat-square)](https://www.npmjs.com/package/@ryanburnette/authentication)
 
 A Node.js authentication library.
 
@@ -26,7 +29,12 @@ npm install @ryanburnette/authentication
 ```
 
 ```js
-var authentication = require('@ryanburnette/authentication')({
+'use strict';
+
+var express = require('express');
+var Authentication = require('@ryanburnette/authentication');
+
+var authentication = {
   users: [
     {
       name: 'Ryan Burnette',
@@ -46,7 +54,7 @@ var authentication = require('@ryanburnette/authentication')({
     }
   },
   storage: require('@ryanburnette/authentication-storage-fs')
-});
+};
 
 app.get('/authenticate', function (req, res) {
   var email = req.body;

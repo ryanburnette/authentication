@@ -9,5 +9,9 @@
   "dependencies": {
     "ejs": "^3.0.2",
     "mailgun-js": "^0.22.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ryanburnette/authentication.git"
   }
 }
