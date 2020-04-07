@@ -12,7 +12,7 @@ You get back a few functions:
 - `request` A function to allow users to request a token by email.
 - `authorize` Express middleware for authorizing requests. Requests should pass
   the token as `Authorization: Bearer [token]`. If the request isn't authorized,
-  it sends a 401 status code.
+  the requests receives a 401 status.
 
 You can also see the data:
 
