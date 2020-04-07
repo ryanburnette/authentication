@@ -5,26 +5,35 @@
 
 A Node.js authentication library.
 
+## About
+
+Back when I used Ruby on Rails, I loved how quickly I could build an app with
+user-friendly authentication using
+[Devise](https://github.com/heartcombo/devise). There are similar options for
+Node.js and Express, but none of them met my needs, so I wrote this.
+
 > This library is not a suggestion of the right way to do anything, or advice on
 > how you should do something. It's just how I do it on some of the apps I work
 > on.
 
-## What this library does
+You give this library some options, and it gives you what you need for a basic
+authentication strategy.
 
-You give this library some options, a list of users, and Mailgun credentials.
+## API
 
-You get back a few functions:
-
-- `users` Get an array of the user objects. Include an email address as the
-  argument to get a single user.
-- `sessions` Get an array of the session objects. A session is just an unexpired
-  token, but it also keeps track of the `ip` and `ua` of the requesting browser.
-  Include an email address as the argument to get the sessions for that user.
-- `authenticate` A function to allow users to authenticate by having a token
-  sent to their email address.
-- `authorize` Express middleware for authorizing requests. Requests should pass
-  the token as `Authorization: Bearer [token]`. If the request isn't authorized,
-  it receives a 401 status.
+- `users([email])` Get an array of the user objects. Include an optional email
+  address argument to get a single user.
+- `sessions([email])` Get an array of the session objects. A session basically
+  just an unexpired token, but it also keeps track of the `ip` and `ua` of the
+  browser that got the token. Include an email address as the argument to get
+  the sessions for that user.
+- `signin(email)` Start the authentication process. Email the user an
+  exchangeToken that they'll trade for their token.
+- `exchange(exchangeToken)` Complete the authentication process. Exhcange an
+  exchagneToken for a token.
+- `authorize(req, res, next)` Express middleware for authorizing requests.
+  Requests should pass set `Authorization: Bearer [token]`. If the request isn't
+  authorized, return 401.
 
 ## Usage
 
