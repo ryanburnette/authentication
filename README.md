@@ -48,7 +48,9 @@ npm install @ryanburnette/authentication
 var express = require('express');
 var Authentication = require('@ryanburnette/authentication');
 
-var authentication = {
+var app = express();
+
+var authentication = Authentication({
   users: [
     {
       name: 'Ryan Burnette',
@@ -62,13 +64,12 @@ var authentication = {
     },
     signin: {
       subject: 'Sign in to my app',
-      html:
-        '<p>Sign in to my app.</p><p><a href="<%= url %>">Click here</a></p>',
-      text: ''
+      html: fs.readFileSync('./templates/email.html', 'utf8'),
+      text: fs.readFileSync('./templates/email.txt', 'utf8')
     }
   },
   storage: require('@ryanburnette/authentication-storage-fs')
-};
+});
 
 app.get('/signin', function (req, res) {
   var email = req.body;
