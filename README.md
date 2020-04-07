@@ -19,6 +19,14 @@ Node.js and Express, but none of them met my needs, so I wrote this.
 You give this library some options, and it gives you what you need for a basic
 authentication strategy.
 
+## Implementation
+
+- I use [hashcash](https://github.com/ryanburnette/hashcash) to protect the
+  `/signin` endpoint.
+- I include a password field that is ignored so users aren't confused by a login
+  form that online includes an email address. This also makes the app compatible
+  with password managers.
+
 ## API
 
 - `users([email])` Get an array of the user objects. Include an optional email
