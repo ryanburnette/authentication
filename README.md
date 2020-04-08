@@ -19,6 +19,14 @@ Node.js and Express, but none of them met my needs, so I wrote this.
 You give this library some options, and it gives you what you need for a basic
 authentication strategy.
 
+## Strategy
+
+This library provides an authentication strategy where you'll have a list of
+users who, when they initiate a signin, they receive an email, delivered by
+Mailgun, that contains an exchangeToken which allows them to obtain a
+jsonwebtoken, or token, that can be passed to requests as a header
+`Authorization: Bearer [token]` in order to authenticate requests.
+
 ## Configuration
 
 See the
