@@ -30,7 +30,7 @@ token, that can be passed to requests as a header
 ## Configuration
 
 See the
-[`config` object in `example.js`](https://github.com/ryanburnette/authentication/blob/master/example/index.js#L8-L27).
+[`config` object in `example/index.js`](https://github.com/ryanburnette/authentication/blob/master/example/index.js#L8-L27).
 
 Here are the things to configure:
 
@@ -77,7 +77,7 @@ npm install @ryanburnette/authentication
 ```
 
 See
-[`example.js`](https://github.com/ryanburnette/authentication/blob/master/example/index.js).
+[`example/index.js`](https://github.com/ryanburnette/authentication/blob/master/example/index.js).
 
 ## Implementation
 
