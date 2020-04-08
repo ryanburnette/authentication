@@ -68,7 +68,8 @@ Functions provided by the returned object. Arguments are always attributes of an
 npm install @ryanburnette/authentication
 ```
 
-See `example.js`.
+See
+[`example.js`](https://github.com/ryanburnette/authentication/blob/master/example.js).
 
 ## Implementation
 

@@ -50,12 +50,23 @@ module.exports = function(opts) {
 
   obj.exchange = function(opts) {};
 
+  function unauthorized(res) {
+    return res.sendStatus(401);
+  }
+
   obj.authorize = function(req, res, next) {
+    var token = getBearerToken(req);
+    if (!token) {
+      return unauthorized(res);
+    }
+    var token = req.token;
+
     var user = {};
     if (!user) {
-      return res.sendStatus(401);
+      return unauthorized(res);
     }
     req.user = user;
+
     next();
   };
 

@@ -1,5 +1,7 @@
 'use strict';
 
+require('dotenv')({});
+
 var express = require('express');
 var Authentication = require('@ryanburnette/authentication');
 
@@ -13,15 +15,15 @@ var config = {
     }
   ],
   mailgun: {
-    apiKey: '',
-    domain: ''
+    apiKey: process.env.MAILGUN_API_KEY,
+    domain: process.env.MAILGUN_DOMAIN
   },
   email: {
     from: 'no-reply@localhost',
     to: '<%= user.name %> <<%= user.email %>>',
     subject: 'Sign in to My App <%= uuid %>',
-    html: fs.readFileSync('./templates/email.html', 'utf8'),
-    text: fs.readFileSync('./templates/email.txt', 'utf8')
+    html: fs.readFileSync('./email.html', 'utf8'),
+    text: fs.readFileSync('./email.txt', 'utf8')
   },
   storage: require('@ryanburnette/authentication-storage-fs')
 };
@@ -78,7 +80,7 @@ app.get('/sessions', authentication.authorize, function(req, res) {
 
 app.get('/signout', authentication.authorize, function(req, res) {
   authentication
-    .signout(req.token)
+    .signout({ token: req.token })
     .then(function() {
       res.sendStatus(200);
     })
