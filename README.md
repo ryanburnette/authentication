@@ -21,7 +21,8 @@ authentication strategy.
 
 ## Configuration
 
-See the `config` object in `example.js`.
+See the
+[`config` object in `example.js`](https://github.com/ryanburnette/authentication/blob/master/example.js#L8-L27).
 
 Here are the things to configure:
 
