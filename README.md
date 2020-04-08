@@ -19,14 +19,18 @@ Node.js and Express, but none of them met my needs, so I wrote this.
 You give this library some options, and it gives you what you need for a basic
 authentication strategy.
 
+## Configuration
+
 ## API
 
-- `users([email])` Get an array of the user objects. Include an optional email
-  address argument to get a single user.
-- `sessions([email])` Get an array of the session objects. A session basically
-  just an unexpired token, but it also keeps track of the `ip` and `ua` of the
-  browser that got the token. Include an email address as the argument to get
-  the sessions for that user.
+- `users()` Get an array of the user objects. Pass an email to find one user by
+  their email.  
+  `{email}`
+- `sessions()` Get an array of the session objects. A session basically just an
+  unexpired token, but it also keeps track of the `ip` and `ua` of the browser
+  that got the token. Pass an email to get the sessions for that user. Pass an
+  exchangeToken to get the session for that exchangeToken.  
+  `{email, exchangeToken}`
 - `signin(email)` Start the authentication process. Email the user an
   exchangeToken that they'll trade for their token.
 - `signout(token|id)` Sign a session out.
@@ -42,95 +46,7 @@ authentication strategy.
 npm install @ryanburnette/authentication
 ```
 
-```js
-'use strict';
-
-var express = require('express');
-var Authentication = require('@ryanburnette/authentication');
-
-var app = express();
-
-var authentication = Authentication({
-  users: [
-    {
-      name: 'Ryan Burnette',
-      email: 'ryan.burnette@gmail.com'
-    }
-  ],
-  email: {
-    mailgun: {
-      apiKey: '',
-      domain: ''
-    },
-    signin: {
-      subject: 'Sign in to my app',
-      html: fs.readFileSync('./templates/email.html', 'utf8'),
-      text: fs.readFileSync('./templates/email.txt', 'utf8')
-    }
-  },
-  storage: require('@ryanburnette/authentication-storage-fs')
-});
-
-app.get('/signin', function (req, res) {
-  var email = req.body;
-  authentication
-    .users(email)
-    .then(function (user) {
-      if (user) {
-        authentication.signin(user.email);
-      }
-    })
-    .catch(function (err) {
-      console.error(err);
-    });
-  res.sendStatus(200);
-});
-
-app.get('/exchange', function (req, res) {
-  var exchangeToken = req.body;
-  authentication
-    .exchange(exchangeToken)
-    .then(function (token) {
-      if (token) {
-        res.send(token);
-      } else {
-        res.sendStatus(401);
-      }
-    })
-    .catch(function (err) {
-      console.error(err);
-      res.sendStatus(500);
-    });
-});
-
-app.get('/user', authentication.authorize, function (req, res) {
-  res.json(req.user);
-});
-
-app.get('/sessions', authentication.authorize, function (req, res) {
-  authentication
-    .sessions(req.user.email)
-    .then(function (sessions) {
-      res.json(sessions);
-    })
-    .catch(function (err) {
-      console.error(err);
-      res.sendStatus(500);
-    });
-});
-
-app.get('/signout', authentication.authorize, function (req, res) {
-  authentication
-    .signout(req.token)
-    .then(function () {
-      res.sendStatus(200);
-    })
-    .catch(function (err) {
-      console.error(err);
-      res.sendStatus(500);
-    });
-});
-```
+See `example.js`.
 
 ## Implementation
 

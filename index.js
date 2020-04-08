@@ -1,24 +1,36 @@
 'use strict';
 
 var fs = require('fs');
+var Mailgun = require('mailgun-js');
 
-module.exports = function (opts) {
+module.exports = function(opts) {
   var obj = {};
 
-  // the users
-  obj.users = opts.users;
+  var users = opts.users;
 
-  // find a user
-  obj.findUser = function (email) {
-    return obj.users.find(function (el) {
-      return el.email == email;
-    });
+  obj.users = function() {
+    return users;
   };
 
-  // request a session for this user
-  // create a claim
-  // email user
-  obj.request = function (email) {};
+  var mailgun = Mailgun({
+    apiKey: opts.mailgun.apiKey,
+    domain: opts.mailgun.domain
+  });
+
+  // a list of excluded jti's
+  // load on init
+  // save on change
+  obj.exclusions = [];
+
+  // load on init
+  // save on change
+  var sessions = [];
+
+  obj.sessions = function() {
+    return sessions;
+  };
+
+  obj.exchange = function(exchangeToken) {};
 
   return obj;
 };
