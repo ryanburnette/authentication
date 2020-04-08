@@ -1,3 +1,0 @@
-You are signing in to <%= app.name %>. Copy and paste the link below to sign in. The link will expire in 1 hour.
-
-http://localhost:3000/#<%= exchangeToken %>

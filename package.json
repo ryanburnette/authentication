@@ -7,9 +7,7 @@
   "author": "Ryan Burnette <ryan.burnette@gmail.com>",
   "license": "ISC",
   "dependencies": {
-    "ejs": "^3.0.2",
-    "jsonwebtoken": "^8.5.1",
-    "mailgun-js": "^0.22.0"
+    "jsonwebtoken": "^8.5.1"
   },
   "repository": {
     "type": "git",
