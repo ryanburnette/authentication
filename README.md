@@ -21,20 +21,41 @@ authentication strategy.
 
 ## Configuration
 
+See the `config` object in `example.js`.
+
+Here are the things to configure:
+
+- `users` An array of objects. Each user must have `name` and `email`
+  attributes. Include whatever else you want, but it's best to keep the object
+  small to keep the token small.
+- `mailgun` Must set `apiKey` and `domain`.
+- `email` This is a template for the signin email. EJS is used to render each
+  field.
+- `storage` Provide a storage library if you need persistence.
+
+## Storage
+
+There are two options for storage libraries.
+
+- [@ryanburnette/authentication-storage-fs](https://github.com/ryanburnette/authentication-storage-fs)
+- [@ryanburnette/authentication-storage-sequelize](https://github.com/ryanburnette/authentication-storage-sequelize)
+
 ## API
 
-- `users()` Get an array of the user objects. Pass an email to find one user by
-  their email.  
-  `{email}`
-- `sessions()` Get an array of the session objects. A session basically just an
-  unexpired token, but it also keeps track of the `ip` and `ua` of the browser
-  that got the token. Pass an email to get the sessions for that user. Pass an
-  exchangeToken to get the session for that exchangeToken.  
-  `{email, exchangeToken}`
-- `signin(email)` Start the authentication process. Email the user an
-  exchangeToken that they'll trade for their token.
-- `signout(token|id)` Sign a session out.
-- `exchange(exchangeToken)` Complete the authentication process. Exhcange an
+Functions provided by the returned object. Arguments are always attributes of an
+`opts` function.
+
+- `users({ email })` Get an array of the user objects. Pass an email to find one
+  user by their email.
+- `sessions({ email, exchangeToken })` Get an array of the session objects. A
+  session basically just an unexpired token, but it also keeps track of the `ip`
+  and `ua` of the browser that got the token. Pass an email to get the sessions
+  for that user. Pass an exchangeToken to get the session for that
+  exchangeToken.
+- `signin({ email })` Start the authentication process. Email the user an
+  exchangeToken that they'll exchange for their token.
+- `signout({ uuid, token })` Sign a session out.
+- `exchange({ exchangeToken })` Complete the authentication process. Exhcange an
   exchagneToken for a token.
 - `authorize(req, res, next)` Express middleware for authorizing requests.
   Requests should set `Authorization: Bearer [token]`. If the request isn't
@@ -60,4 +81,4 @@ See `example.js`.
 
 - This is meant for apps with a small number of users.
 - This isn't meant to be the most secure implementation ever. If it's good
-  enough, it's good enough. If it's not, use something else.
+  enough, use it. If it's not good enough, use something else.
