@@ -21,7 +21,7 @@ var config = {
   email: {
     from: 'no-reply@localhost',
     to: '<%= user.name %> <<%= user.email %>>',
-    subject: 'Sign in to My App <%= uuid %>',
+    subject: 'Sign in to My App <%= exchangeToken %>',
     html: fs.readFileSync('./email.html', 'utf8'),
     text: fs.readFileSync('./email.txt', 'utf8')
   },
@@ -30,61 +30,61 @@ var config = {
 
 var authentication = Authentication(config);
 
-app.get('/signin', function(req, res) {
+app.get('/signin', function (req, res) {
   var email = req.body;
   authentication
     .users(email)
-    .then(function(user) {
+    .then(function (user) {
       if (user) {
         authentication.signin(user.email);
       }
     })
-    .catch(function(err) {
+    .catch(function (err) {
       console.error(err);
     });
   res.sendStatus(200);
 });
 
-app.get('/exchange', function(req, res) {
+app.get('/exchange', function (req, res) {
   var exchangeToken = req.body;
   authentication
     .exchange(exchangeToken)
-    .then(function(token) {
+    .then(function (token) {
       if (token) {
         res.send(token);
       } else {
         res.sendStatus(401);
       }
     })
-    .catch(function(err) {
+    .catch(function (err) {
       console.error(err);
       res.sendStatus(500);
     });
 });
 
-app.get('/user', authentication.authorize, function(req, res) {
+app.get('/user', authentication.authorize, function (req, res) {
   res.json(req.user);
 });
 
-app.get('/sessions', authentication.authorize, function(req, res) {
+app.get('/sessions', authentication.authorize, function (req, res) {
   authentication
     .sessions(req.user.email)
-    .then(function(sessions) {
+    .then(function (sessions) {
       res.json(sessions);
     })
-    .catch(function(err) {
+    .catch(function (err) {
       console.error(err);
       res.sendStatus(500);
     });
 });
 
-app.get('/signout', authentication.authorize, function(req, res) {
+app.get('/signout', authentication.authorize, function (req, res) {
   authentication
     .signout({ token: req.token })
-    .then(function() {
+    .then(function () {
       res.sendStatus(200);
     })
-    .catch(function(err) {
+    .catch(function (err) {
       console.error(err);
       res.sendStatus(500);
     });

@@ -1,6 +1,5 @@
 'use strict';
 
-var fs = require('fs');
 var Mailgun = require('mailgun-js');
 
 module.exports = function(opts) {
@@ -10,6 +9,11 @@ module.exports = function(opts) {
     apiKey: opts.mailgun.apiKey,
     domain: opts.mailgun.domain
   });
+
+  obj.random = random;
+  if (opts.random) {
+    obj.random = opts.random;
+  }
 
   var users = opts.users;
 
@@ -50,10 +54,6 @@ module.exports = function(opts) {
 
   obj.exchange = function(opts) {};
 
-  function unauthorized(res) {
-    return res.sendStatus(401);
-  }
-
   obj.authorize = function(req, res, next) {
     var token = getBearerToken(req);
     if (!token) {
@@ -72,3 +72,11 @@ module.exports = function(opts) {
 
   return obj;
 };
+
+function unauthorized(res) {
+  return res.sendStatus(401);
+}
+
+function random() {
+  return Math.floor(100000 + Math.random() * 900000);
+}
