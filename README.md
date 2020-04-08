@@ -22,9 +22,9 @@ authentication strategy.
 ## Strategy
 
 This library provides an authentication strategy where you'll have a list of
-users who, when they initiate a signin, they receive an email, delivered by
-Mailgun, that contains an exchangeToken which allows them to obtain a
-jsonwebtoken, or token, that can be passed to requests as a header
+users who, when they initiate a signin, receive an email, delivered by Mailgun,
+that contains an exchangeToken which allows them to obtain a jsonwebtoken, or
+token, that can be passed to requests as a header
 `Authorization: Bearer [token]` in order to authenticate requests.
 
 ## Configuration
