@@ -7,24 +7,21 @@ A Node.js authentication library.
 
 ## About
 
-Back when I used Ruby on Rails, I loved how quickly I could build an app with
-user-friendly authentication using
-[Devise](https://github.com/heartcombo/devise). There are similar options for
-Node.js and Express, but none of them met my needs, so I wrote this.
+Back when I was primarily using Ruby on Rails, I loved how quickly I could get
+straight-forward user authentication going with
+[Devise](https://github.com/heartcombo/devise). This isn't meant to be as
+robust, but it is meant to be quick.
 
 This library is not a suggestion of the right way to do anything, or advice on
 how you should do something. It's just how I do it on some of the apps I work
-on.
-
-You give this library some options, and it gives you what you need for a basic
-authentication strategy.
+on. I use this when I need rapid deployment, and authentication is required, but
+not of utmost concern.
 
 ## Strategy
 
-This library provides an authentication strategy where you'll have a list of
-users who, when they initiate a signin, are sent an email that contains an
-exchangeToken which is exchanged for a token (jwt), that is passed to requests
-as a header `Authorization: Bearer [token]` to authenticate requests.
+This authentication strategy is one where you have a static users list. Those
+users request an exchagneToken which they are then able to exchange for a token.
+The token is passed along with all subsequent API requests.
 
 ## Configuration
 
@@ -35,30 +32,26 @@ in
 
 Here are the things to configure:
 
-- `users` **required** An array of objects. Each user must have `name` and
-  `email` attributes. Include whatever else you want, but it's best to keep the
-  object small to keep the token small.
-- `email` **required** A callback for sending the user their exchangeToken.
+- `users` **required** Provide an array of user objects, or a Promise-returning
+  function to get an array of user objects. Each user must have `name` and
+  `email` attributes. Include whatever else you want, but this object will be
+  used to build the token, so keep the attributes list as minimal as possible.
+- `email` **required** A callback function that receives
+  `{ user, exchangeToken }`. This gives you a place to email the user their
+  exchangeToken and a URL to complete the sign in exchange.
 - `storage` _optional_ Provide a [storage](#storage) library if you need
   persistence.
+- `random` _optional_ Provide a function for generating the random exchangeToken
+  which also serves as the session id.
 
 ## API
 
-Functions provided by the returned object. Arguments are always attributes of an
-`opts` function (except for the authorize middleware).
+Functions provided by the returned object that are used in an implementation.
 
-- `users({ email })` Get an array of the user objects. Pass an email to find one
-  user by their email.
-- `sessions({ email, exchangeToken })` Get an array of the session objects. A
-  session basically just an unexpired token, but it also keeps track of the `ip`
-  and `ua` of the browser that got the token. Pass an email to get the sessions
-  for that user. Pass an exchangeToken to get the session for that
-  exchangeToken.
-- `signin({ email })` Start the authentication process. Calls the `email`
-  callback.
-- `exchange({ exchangeToken })` Complete the authentication process. Exhcange an
+- `signin(email)` Start the authentication process. Calls the `email` callback.
+- `exchange(exchangeToken)` Complete the authentication process. Exhcange an
   exchagneToken for a token.
-- `signout({ uuid, token })` Invalidate a session.
+- `signout(exchangeToken)` Invalidate a session.
 - `authorize(req, res, next)` Express middleware for authorizing requests.
   Requests should set `Authorization: Bearer [token]`. If the request isn't
   authorized, return 401.
@@ -85,9 +78,9 @@ If you want persistence, there are two options for storage libraries.
 - I use EJS to render my templates.
 - I use [hashcash](https://github.com/ryanburnette/hashcash) to protect the
   `/signin` endpoint from abuse.
-- I include a password field that is ignored so users aren't confused by a login
-  form that online includes an email address. This also makes the app compatible
-  with password managers.
+- I include a password field that is ignored so users aren't confused by a sign
+  in form that lacks a password field. This also makes the app compatible with
+  password managers.
 
 ## Limitations
 

@@ -1,65 +1,108 @@
 'use strict';
 
-var Mailgun = require('mailgun-js');
+var getBearerToken = require('@ryanburnette/get-bearer-token');
+var jsonwebtoken = require('jsonwebtoken');
 
-module.exports = function(opts) {
+module.exports = function (opts) {
   var obj = {};
-
-  var mailgun = Mailgun({
-    apiKey: opts.mailgun.apiKey,
-    domain: opts.mailgun.domain
-  });
 
   obj.random = random;
   if (opts.random) {
     obj.random = opts.random;
   }
 
-  var users = opts.users;
-
-  obj.users = function(opts) {
-    if (opts.email) {
-      return users.find(function(u) {
-        return u.email == opts.email;
-      });
+  obj.users = function () {
+    if (Array.isArray(opts.users)) {
+      return Promise.resolve(opts.users);
     }
-
-    return users;
+    return opts.users();
   };
 
-  // a list of excluded jti's
-  // load on init
-  // save on change
-  obj.exclusions = [];
+  obj.user = function (email) {
+    return obj.users().then(function (users) {
+      var u = users.find(function (el) {
+        return email == el.email;
+      });
+      if (!u) {
+        return null;
+      }
+      return clone(u);
+    });
+  };
 
-  // load on init
-  // save on change
   var sessions = [];
 
-  obj.sessions = function(opts) {
-    if (opts.email) {
-      return sessions.filter(function(s) {
-        return s.email == opts.email;
-      });
-    }
-
-    if (opts.exchangeToken) {
-      return sessions.find(function(s) {
-        return s.exchangeToken == opts.exchangeToken;
-      });
-    }
-
-    return sessions;
+  obj.sessions = function () {
+    // TODO expire old sessions
+    // TODO don't let a single user have more than 3 unclaimed sessions, things could get out of hand
+    return Promise.resolve(sessions);
   };
 
-  obj.exchange = function(opts) {};
+  obj.session = function (exchangeToken) {
+    return obj.sessions().then(function (ss) {
+      return ss.find(function (s) {
+        return s.exchangeToken == exchangeToken;
+      });
+    });
+  };
 
-  obj.authorize = function(req, res, next) {
+  obj.userSessions = function (email) {
+    return obj.sessions().then(function (ss) {
+      return ss.filter(function (s) {
+        return s.email == email;
+      });
+    });
+  };
+
+  obj.exchangeTokens = [];
+
+  obj.signin = function (email) {
+    return obj
+      .user(email)
+      .then(function (user) {
+        if (!user) {
+          throw new Error('user not found');
+        }
+
+        var session = {};
+        var exchangeToken = obj.random();
+        session.exchangeToken = exchangeToken;
+        session.verified = false;
+
+        obj.email({ user, exchangeToken });
+
+        obj.save();
+      })
+      .catch(function (err) {
+        if (String('err').includes('user not found')) {
+          return false;
+        }
+        throw err;
+      });
+  };
+
+  obj.exchange = function ({ exchangeToken, ip, ua }) {
+    return obj.session(exchangeToken).then(function (s) {
+      if (!s || s.exchanged) {
+        return false;
+      }
+
+      s.exchanged = true;
+
+      obj.exchangeTokens.push(exchangeToken);
+      if (obj.storage) {
+        obj.save();
+      }
+
+      return s;
+    });
+  };
+
+  obj.authorize = function (req, res, next) {
     var token = getBearerToken(req);
     if (!token) {
       return unauthorized(res);
     }
-    var token = req.token;
 
     var user = {};
     if (!user) {
@@ -70,6 +113,40 @@ module.exports = function(opts) {
     next();
   };
 
+  obj.storage = opts.storage;
+  obj.save = function () {
+    if (!obj.storage) {
+      return false;
+    }
+
+    obj.sessions().then(function (sessions) {
+      return obj.storage.save({
+        sessions,
+        exchangeTokens: obj.exchangeTokens
+      });
+    });
+  };
+
+  if (obj.storage) {
+    obj.storage
+      .load()
+      .then(function (lobj) {
+        if (lobj) {
+          sessions = lobj.sessions;
+          obj.exchangeTokens = lobj.exchangeTokens;
+        }
+      })
+      .catch(function (err) {
+        console.error(err);
+      });
+  }
+
+  obj.email =
+    opts.email ||
+    function () {
+      throw new Error('email function not provided');
+    };
+
   return obj;
 };
 
@@ -79,4 +156,8 @@ function unauthorized(res) {
 
 function random() {
   return Math.floor(100000 + Math.random() * 900000);
+}
+
+function clone(obj) {
+  return JSON.parse(JSON.stringify(obj));
 }
