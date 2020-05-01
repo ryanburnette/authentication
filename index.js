@@ -1,6 +1,5 @@
 'use strict';
 
-var getBearerToken = require('@ryanburnette/get-bearer-token');
 var jsonwebtoken = require('jsonwebtoken');
 var fs = require('fs');
 
