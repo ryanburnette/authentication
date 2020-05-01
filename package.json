@@ -11,11 +11,6 @@
     "url": "https://github.com/ryanburnette/authentication.git"
   },
   "dependencies": {
-    "@ryanburnette/get-bearer-token": "^1.0.5",
     "jsonwebtoken": "^8.5.1"
-  },
-  "devDependencies": {
-    "jshint": "^2.11.0",
-    "prettier": "^2.0.4"
   }
 }

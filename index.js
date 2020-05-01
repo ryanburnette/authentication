@@ -2,162 +2,146 @@
 
 var getBearerToken = require('@ryanburnette/get-bearer-token');
 var jsonwebtoken = require('jsonwebtoken');
+var fs = require('fs');
 
 module.exports = function (opts) {
-  var obj = {};
-
-  obj.random = random;
-  if (opts.random) {
-    obj.random = opts.random;
+  if (!opts.secret) {
+    opts.secret = String(random() + random() + random() + random());
   }
 
-  obj.users = function () {
-    if (Array.isArray(opts.users)) {
-      return Promise.resolve(opts.users);
+  if (!opts.signinTimeout) {
+    opts.signinTimeout = 600000;
+  }
+
+  function findUser(email) {
+    var u = opts.users.find(function (el) {
+      return email == el.email;
+    });
+    if (!u) {
+      return null;
     }
-    return opts.users();
-  };
+    return clone(u);
+  }
 
-  obj.user = function (email) {
-    return obj.users().then(function (users) {
-      var u = users.find(function (el) {
-        return email == el.email;
-      });
-      if (!u) {
-        return null;
-      }
-      return clone(u);
-    });
-  };
+  function signin(email) {
+    var u = findUser(email);
+    if (!u) {
+      throw err('ENOUSER', 'user not found');
+    }
 
-  var sessions = [];
+    var jti = generateJti();
 
-  obj.sessions = function () {
-    // TODO expire old sessions
-    // TODO don't let a single user have more than 3 unclaimed sessions, things could get out of hand
-    return Promise.resolve(sessions);
-  };
-
-  obj.session = function (exchangeToken) {
-    return obj.sessions().then(function (ss) {
-      return ss.find(function (s) {
-        return s.exchangeToken == exchangeToken;
-      });
-    });
-  };
-
-  obj.userSessions = function (email) {
-    return obj.sessions().then(function (ss) {
-      return ss.filter(function (s) {
-        return s.email == email;
-      });
-    });
-  };
-
-  obj.exchangeTokens = [];
-
-  obj.signin = function (email) {
-    return obj
-      .user(email)
-      .then(function (user) {
-        if (!user) {
-          throw new Error('user not found');
-        }
-
-        var session = {};
-        var exchangeToken = obj.random();
-        session.exchangeToken = exchangeToken;
-        session.verified = false;
-
-        obj.email({ user, exchangeToken });
-
-        obj.save();
+    fs.writeFileSync(
+      './.authentication/' + String(jti),
+      JSON.stringify({
+        email,
+        createdAt: new Date()
       })
-      .catch(function (err) {
-        if (String('err').includes('user not found')) {
-          return false;
-        }
-        throw err;
-      });
-  };
+    );
 
-  obj.exchange = function ({ exchangeToken, ip, ua }) {
-    return obj.session(exchangeToken).then(function (s) {
-      if (!s || s.exchanged) {
-        return false;
-      }
+    sendSigninEmail({ email, jti });
+  }
 
-      s.exchanged = true;
+  function sendSigninEmail({ email, jti }) {
+    // TODO
+    console.log('send signin email', email, jti);
+  }
 
-      obj.exchangeTokens.push(exchangeToken);
-      if (obj.storage) {
-        obj.save();
-      }
-
-      return s;
-    });
-  };
-
-  obj.authorize = function (req, res, next) {
-    var token = getBearerToken(req);
-    if (!token) {
-      return unauthorized(res);
+  function exchange({ email, jti }) {
+    expireUnclaimedJti(jti);
+    var fn = './.authentication/' + String(jti);
+    if (!fs.existsSync(fn)) {
+      throw err('ENOENT', 'jti does not exist');
     }
-
-    var user = {};
+    var obj = JSON.parse(fs.readFileSync('./.authentication/' + String(jti)));
+    if (email != obj.email) {
+      throw err('EMMSMT', 'email mismatch');
+    }
+    if (obj.claimedAt) {
+      throw err('EALCLM', 'already claimed');
+    }
+    var user = findUser(email);
     if (!user) {
-      return unauthorized(res);
+      throw err('ENOUSR', 'user does not exist');
     }
-    req.user = user;
-
-    next();
-  };
-
-  obj.storage = opts.storage;
-  obj.save = function () {
-    if (!obj.storage) {
-      return false;
-    }
-
-    obj.sessions().then(function (sessions) {
-      return obj.storage.save({
-        sessions,
-        exchangeTokens: obj.exchangeTokens
-      });
-    });
-  };
-
-  if (obj.storage) {
-    obj.storage
-      .load()
-      .then(function (lobj) {
-        if (lobj) {
-          sessions = lobj.sessions;
-          obj.exchangeTokens = lobj.exchangeTokens;
-        }
-      })
-      .catch(function (err) {
-        console.error(err);
-      });
+    obj.claimedAt = new Date();
+    fs.writeFileSync(fn, JSON.stringify(obj));
+    return jsonwebtoken.sign({ user }, opts.secret, { jwtid: jti });
   }
 
-  obj.email =
-    opts.email ||
-    function () {
-      throw new Error('email function not provided');
-    };
+  function verify(token) {
+    return jsonwebtoken.verify(token, opts.secret);
+  }
 
-  return obj;
+  function signout(token) {
+    var obj = verify(token);
+    var fn = './.authentication/' + String(obj.jti);
+    if (fs.existsSync(fn)) {
+      fs.unlinkSync(fn);
+    }
+  }
+
+  function clone(obj) {
+    return JSON.parse(JSON.stringify(obj));
+  }
+
+  function random() {
+    return Math.floor(100000 + Math.random() * 900000);
+  }
+
+  function err(code, message) {
+    var e = new Error(message);
+    e.code = code;
+    return e;
+  }
+
+  function generateJti() {
+    var jti = random();
+    var existingJtis = fs.readdirSync('./.authentication/');
+    expireUnclaimedJtis(existingJtis);
+    if (existingJtis.includes(jti)) {
+      return generateJti();
+    }
+    fs.writeFileSync('./.authentication/' + jti);
+    return jti;
+  }
+
+  function expireUnclaimedJti(jti) {
+    var fn = './.authentication/' + String(jti);
+    if (fs.existsSync(fn)) {
+      var obj = JSON.parse(fs.readFileSync(fn));
+      if (
+        !obj.claimedAt &&
+        new Date() - new Date(obj.createdAt) > opts.signinTimeout
+      ) {
+        fs.unlinkSync(fn);
+      }
+    }
+  }
+
+  function expireUnclaimedJtis(jtis) {
+    jtis.forEach(expireUnclaimedJti);
+  }
+
+  function expireAgedJti(jti) {
+    if (!opts.tokenTimeout) {
+      return;
+    }
+    var fn = './.authentication/' + String(jti);
+    if (fs.existsSync(fn)) {
+      var obj = JSON.parse(fs.readFileSync(fn));
+      if (
+        obj.claimedAt &&
+        new Date() - new Date(obj.claimedAt) > opts.tokenTimeout
+      ) {
+        fs.unlinkSync(fn);
+      }
+    }
+  }
+
+  function expireAgedJtis(jtis) {
+    jtis.forEach(expireAgedJti);
+  }
+
+  return { signin, exchange, verify };
 };
-
-function unauthorized(res) {
-  return res.sendStatus(401);
-}
-
-function random() {
-  return Math.floor(100000 + Math.random() * 900000);
-}
-
-function clone(obj) {
-  return JSON.parse(JSON.stringify(obj));
-}
