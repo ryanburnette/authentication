@@ -2,4 +2,4 @@
 
 var auth = require('./auth');
 
-auth.signin('ryan.burnette@gmail.com');
+auth.signin(process.argv[2]);
