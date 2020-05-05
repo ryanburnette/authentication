@@ -1,8 +1,5 @@
-var auth = require('./auth');
-
-console.log(
-  auth.exchange({
-    email: 'ryan.burnette@gmail.com',
-    jti: String(process.argv[2])
-  })
-);
+require('./auth')
+  .exchange(process.argv[2])
+  .then(function (token) {
+    console.log(token);
+  });

@@ -1,9 +1,22 @@
 'use strict';
 
-var jsonwebtoken = require('jsonwebtoken');
 var fs = require('fs');
+var path = require('path');
+var jsonwebtoken = require('jsonwebtoken');
 
 module.exports = function (opts) {
+  if (!opts) {
+    throw new Error('opts is required');
+  }
+
+  if (!opts.dir) {
+    opts.dir = './.authentication/';
+  }
+
+  if (!fs.existsSync(opts.dir)) {
+    fs.mkdirSync(opts.dir);
+  }
+
   if (!opts.secret) {
     opts.secret = String(random() + random() + random() + random());
   }
@@ -12,135 +25,190 @@ module.exports = function (opts) {
     opts.signinTimeout = 600000;
   }
 
+  if (!opts.env) {
+    opts.env = 'development';
+  }
+
+  if (!opts.users) {
+    throw new Error('opts.users is required');
+  }
+
+  if (Array.isArray(opts.users)) {
+    var _users = clone(opts.users);
+    opts.users = function () {
+      return Promise.resolve(_users);
+    };
+  }
+
   function findUser(email) {
-    var u = opts.users.find(function (el) {
-      return email == el.email;
+    return opts.users().then(function (users) {
+      var u = users.find(function (el) {
+        return email == el.email;
+      });
+      if (u) {
+        return clone(u);
+      }
     });
-    if (!u) {
-      return null;
-    }
-    return clone(u);
   }
 
   function signin(email) {
-    var u = findUser(email);
-    if (!u) {
-      throw err('ENOUSER', 'user not found');
-    }
-
-    var jti = generateJti();
-
-    fs.writeFileSync(
-      './.authentication/' + String(jti),
-      JSON.stringify({
-        email,
-        createdAt: new Date()
+    findUser(email)
+      .then(function (user) {
+        if (!user) {
+          throw err('ENOUSER', 'user not found');
+        }
+        return Promise.all([user, makeSession(email)]);
       })
-    );
-
-    sendSigninEmail({ email, jti });
+      .then(function ([user, session]) {
+        if (opts.env == 'production') {
+          return sendSigninEmail(email, session.jti);
+        } else {
+          console.log('send signin email', session);
+        }
+      });
   }
 
-  function sendSigninEmail({ email, jti }) {
+  function sendSigninEmail(email, jti) {
     // TODO
-    console.log('send signin email', email, jti);
   }
 
-  function exchange({ email, jti }) {
-    expireUnclaimedJti(jti);
-    var fn = './.authentication/' + String(jti);
-    if (!fs.existsSync(fn)) {
-      throw err('ENOENT', 'jti does not exist');
-    }
-    var obj = JSON.parse(fs.readFileSync('./.authentication/' + String(jti)));
-    if (email != obj.email) {
-      throw err('EMMSMT', 'email mismatch');
-    }
-    if (obj.claimedAt) {
-      throw err('EALCLM', 'already claimed');
-    }
-    var user = findUser(email);
-    if (!user) {
-      throw err('ENOUSR', 'user does not exist');
-    }
-    obj.claimedAt = new Date();
-    fs.writeFileSync(fn, JSON.stringify(obj));
-    return jsonwebtoken.sign({ user }, opts.secret, { jwtid: jti });
+  function exchange(jti) {
+    var fn = opts.dir + String(jti);
+    return expireUnclaimedSession(jti)
+      .then(function () {
+        return fs.promises.stat(fn);
+      })
+      .then(function (exists) {
+        if (!exists) {
+          throw err('ENOENT', 'jti does not exist');
+        }
+        return fs.promises.readFile(fn);
+      })
+      .then(function (data) {
+        var obj = JSON.parse(data);
+        if (obj.claimedAt) {
+          throw err('EALCLM', 'already claimed');
+        }
+        return Promise.all([obj, findUser(obj.email)]);
+      })
+      .then(function ([obj, user]) {
+        if (!user) {
+          throw err('ENOUSR', 'user does not exist');
+        }
+        obj.claimedAt = new Date();
+        var token = jsonwebtoken.sign({ user }, opts.secret, { jwtid: jti });
+        return fs.promises.writeFile(fn, JSON.stringify(obj)).then(function () {
+          return token;
+        });
+      });
   }
 
   function verify(token) {
-    return jsonwebtoken.verify(token, opts.secret);
+    token = jsonwebtoken.verify(token, opts.secret);
+    var fn = path.join(opts.dir, String(token.jti));
+    return fs.promises.stat(fn).then(function () {
+      return token;
+    });
   }
 
   function signout(token) {
-    var obj = verify(token);
-    var fn = './.authentication/' + String(obj.jti);
-    if (fs.existsSync(fn)) {
-      fs.unlinkSync(fn);
-    }
+    var fn;
+    return verify(token)
+      .then(function (token) {
+        if (!token) {
+          throw err('ENOENT', 'token not found');
+        }
+        fn = opts.dir + String(token.jti);
+        return fs.promises.stat(fn);
+      })
+      .then(function (exists) {
+        if (exists) {
+          return fs.promises.unlink(fn);
+        }
+      })
+      .catch(function (err) {
+        if (err.code == 'ENOENT') {
+          return null;
+        }
+        throw err;
+      });
   }
 
-  function clone(obj) {
-    return JSON.parse(JSON.stringify(obj));
+  function makeSession(email) {
+    var jti = String(random());
+    return fs.promises
+      .readdir(opts.dir)
+      .then(function (existingJtis) {
+        if (existingJtis.includes(jti)) {
+          throw err('DUP', 'jti already exists');
+        }
+        return Promise.all(
+          existingJtis.map(function (jti) {
+            return expireUnclaimedSession(jti);
+          })
+        );
+      })
+      .then(function () {
+        var session = {
+          email,
+          jti,
+          createdAt: new Date()
+        };
+        return fs.promises
+          .writeFile(path.join(opts.dir, jti), JSON.stringify(session))
+          .then(function () {
+            return session;
+          });
+      })
+      .catch(function (err) {
+        if (err.code == 'DUP') {
+          return makeSession(email);
+        }
+        throw err;
+      });
   }
 
-  function random() {
-    return Math.floor(100000 + Math.random() * 900000);
+  function expireUnclaimedSession(jti) {
+    var fn = path.join(opts.dir, String(jti));
+    return fs.promises
+      .stat(fn)
+      .then(function (exists) {
+        if (!exists) {
+          throw err('ENOENT', 'jti not found');
+        }
+        return fs.promises.readFile(fn).then(function (data) {
+          var obj = JSON.parse(data);
+          var unclaimed = !obj.claimedAt;
+          var expired =
+            new Date() - new Date(obj.createdAt) > opts.signinTimeout;
+          if (unclaimed && expired) {
+            return fs.promises.unlink(fn);
+          }
+        });
+      })
+      .catch(function (err) {
+        if (err.code == 'ENOENT') {
+          return null;
+        }
+        throw err;
+      });
   }
 
-  function err(code, message) {
-    var e = new Error(message);
-    e.code = code;
-    return e;
-  }
+  // TODO token expiration
 
-  function generateJti() {
-    var jti = random();
-    var existingJtis = fs.readdirSync('./.authentication/');
-    expireUnclaimedJtis(existingJtis);
-    if (existingJtis.includes(jti)) {
-      return generateJti();
-    }
-    fs.writeFileSync('./.authentication/' + jti);
-    return jti;
-  }
-
-  function expireUnclaimedJti(jti) {
-    var fn = './.authentication/' + String(jti);
-    if (fs.existsSync(fn)) {
-      var obj = JSON.parse(fs.readFileSync(fn));
-      if (
-        !obj.claimedAt &&
-        new Date() - new Date(obj.createdAt) > opts.signinTimeout
-      ) {
-        fs.unlinkSync(fn);
-      }
-    }
-  }
-
-  function expireUnclaimedJtis(jtis) {
-    jtis.forEach(expireUnclaimedJti);
-  }
-
-  function expireAgedJti(jti) {
-    if (!opts.tokenTimeout) {
-      return;
-    }
-    var fn = './.authentication/' + String(jti);
-    if (fs.existsSync(fn)) {
-      var obj = JSON.parse(fs.readFileSync(fn));
-      if (
-        obj.claimedAt &&
-        new Date() - new Date(obj.claimedAt) > opts.tokenTimeout
-      ) {
-        fs.unlinkSync(fn);
-      }
-    }
-  }
-
-  function expireAgedJtis(jtis) {
-    jtis.forEach(expireAgedJti);
-  }
-
-  return { signin, exchange, verify };
+  return { signin, exchange, verify, signout };
 };
+
+function err(code, message) {
+  var e = new Error(message);
+  e.code = code;
+  return e;
+}
+
+function clone(obj) {
+  return JSON.parse(JSON.stringify(obj));
+}
+
+function random() {
+  return Math.floor(100000 + Math.random() * 900000);
+}

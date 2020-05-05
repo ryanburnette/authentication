@@ -1,7 +1,7 @@
 {
   "name": "@ryanburnette/authentication",
   "version": "1.0.0",
-  "description": "A Node.js authentication library.",
+  "description": "A really simple, not for production, Node.js Authentication library.",
   "main": "index.js",
   "scripts": {},
   "author": "Ryan Burnette <ryan.burnette@gmail.com>",

@@ -1,3 +1,5 @@
-var auth = require('./auth');
-
-console.log(auth.verify(String(process.argv[2])));
+require('./auth')
+  .verify(String(process.argv[2]))
+  .then(function (session) {
+    console.log(session);
+  });
