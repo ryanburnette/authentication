@@ -61,7 +61,7 @@ module.exports = function (opts) {
   }
 
   function signin(email) {
-    findUser(email)
+    return findUser(email)
       .then(function (user) {
         if (!user) {
           throw err('ENOUSER', 'user not found');
