@@ -28,6 +28,8 @@ If you're thinking about using this on your production app, don't.
   minutes.
 - `env` In `development` you get console logging to simulate the signin process.
   In `production` you get emails. Defaults to `development`.
+- `dir` The directory to keep the session details in. Defaults to
+  `./authentication/`.
 
 ## API
 
