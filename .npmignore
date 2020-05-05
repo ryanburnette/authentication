@@ -1,3 +1,5 @@
 .authentication/
 test/
 .env
+.jshintrc
+.prettierrc
