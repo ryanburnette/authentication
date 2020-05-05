@@ -21,13 +21,12 @@ If you're thinking about using this on your production app, don't.
   resolves a promise into the array of user objects. The only required attribute
   for a user object is `email`. Everything in the user object is encoded into
   the tokens.
-- `mailgun_api_key` **required**
-- `mailgun_domain` If different from `domain`.
+- `mailgunApiKey` **required**
 - `secret` Randomly generated if not provided.
-- `signinTimeout` Time in milliseconds for a signin to expire. Defaults to 10
-  minutes.
-- `env` In `development` you get console logging to simulate the signin process.
-  In `production` you get emails. Defaults to `development`.
+- `signinTimeout` Time in milliseconds for a sign in request to expire. Defaults
+  to 10 minutes.
+- `env` In `development` you get console logging to simulate the sign in
+  process. In `production` you get emails. Defaults to `development`.
 - `dir` The directory to keep the session details in. Defaults to
   `./authentication/`.
 
@@ -36,7 +35,7 @@ If you're thinking about using this on your production app, don't.
 Functions provided by the returned object that are used in an implementation.
 All functions return promises.
 
-- `signin(email)` Start the signin process. Email the user a jti.
-- `exchange(jti)` Complete the signin process. Exchange a jti for a token.
+- `signin(email)` Start the sign in process. Email the user a jti.
+- `exchange(jti)` Complete the sign in process. Exchange a jti for a token.
 - `verify(token)` Verify a token.
 - `signout(token)` Destroy the session associated with this token.

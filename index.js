@@ -3,6 +3,8 @@
 var fs = require('fs');
 var path = require('path');
 var jsonwebtoken = require('jsonwebtoken');
+var mailgun = require('mailgun-js');
+var ejs = require('ejs');
 
 module.exports = function (opts) {
   if (!opts) {
@@ -29,9 +31,16 @@ module.exports = function (opts) {
     opts.env = 'development';
   }
 
-  if (!opts.users) {
-    throw new Error('opts.users is required');
-  }
+  ['users', 'domain'].forEach(function (el) {
+    if (!opts[el]) {
+      throw new Error(`opts.${el} is required`);
+    }
+  });
+
+  opts.mailgun = mailgun({
+    apiKey: opts.mailgunApiKey,
+    domain: opts.domain
+  });
 
   if (Array.isArray(opts.users)) {
     var _users = clone(opts.users);
@@ -66,10 +75,6 @@ module.exports = function (opts) {
           console.log('send signin email', session);
         }
       });
-  }
-
-  function sendSigninEmail(email, jti) {
-    // TODO
   }
 
   function exchange(jti) {
@@ -194,6 +199,29 @@ module.exports = function (opts) {
       });
   }
 
+  function sendSigninEmail(email, jti) {
+    jti = String(jti);
+
+    return templates().then(function (ts) {
+      var data = {
+        from: `${opts.app} no-reply@${opts.domain}`,
+        to: email,
+        subject: `Sign In to ${opts.app} ${jti}`,
+        html: ejs.render(ts.html, { opts, jti }),
+        text: ejs.render(ts.text, { opts, jti })
+      };
+
+      return new Promise(function (resolve, reject) {
+        opts.mailgun.messages().send(data, function (error, body) {
+          if (error) {
+            reject(error);
+          }
+          resolve(body);
+        });
+      });
+    });
+  }
+
   // TODO token expiration
 
   return { signin, exchange, verify, signout };
@@ -211,4 +239,19 @@ function clone(obj) {
 
 function random() {
   return Math.floor(100000 + Math.random() * 900000);
+}
+
+var ts;
+function templates() {
+  if (ts) {
+    return Promise.resolve(ts);
+  }
+
+  return Promise.all([
+    fs.promises.readFile(path.resolve(__dirname, './email.html')),
+    fs.promises.readFile(path.resolve(__dirname, './email.txt'))
+  ]).then(function ([html, text]) {
+    ts = { html: html.toString(), text: text.toString() };
+    return ts;
+  });
 }
