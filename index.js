@@ -110,11 +110,24 @@ module.exports = function (opts) {
       });
   }
 
+  function jwtVerify(token) {
+    return new Promise(function (resolve, reject) {
+      jsonwebtoken.verify(token, opts.secret, function (err, decoded) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(decoded);
+        }
+      });
+    });
+  }
+
   function verify(token) {
-    token = jsonwebtoken.verify(token, opts.secret);
-    var fn = path.join(opts.dir, String(token.jti));
-    return fs.promises.stat(fn).then(function () {
-      return token;
+    return jwtVerify(token).then(function (decoded) {
+      var fn = path.join(opts.dir, String(decoded.jti));
+      return fs.promises.stat(fn).then(function () {
+        return decoded;
+      });
     });
   }
 
