@@ -1,8 +1,8 @@
 {
   "name": "@ryanburnette/authentication",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "A really simple, not for production, Node.js Authentication library.",
-  "main": "index.js",
+  "main": "authentication.js",
   "author": "Ryan Burnette <ryan.burnette@gmail.com>",
   "license": "ISC",
   "repository": {
@@ -13,8 +13,5 @@
     "ejs": "^3.1.2",
     "jsonwebtoken": "^8.5.1",
     "mailgun-js": "^0.22.0"
-  },
-  "devDependencies": {
-    "dotenv": "^8.2.0"
   }
 }

@@ -11,14 +11,6 @@ module.exports = function (opts) {
     throw new Error('opts is required');
   }
 
-  if (!opts.dir) {
-    opts.dir = './.authentication/';
-  }
-
-  if (!fs.existsSync(opts.dir)) {
-    fs.mkdirSync(opts.dir);
-  }
-
   if (!opts.secret) {
     opts.secret = String(random() + random() + random() + random());
   }
@@ -44,6 +36,12 @@ module.exports = function (opts) {
     domain: opts.mailgunDomain || opts.domain
   });
 
+  if (!opts.storage) {
+    opts.storage = require('./storage-fs')({
+      dir: opts.dir
+    });
+  }
+
   if (Array.isArray(opts.users)) {
     var _users = clone(opts.users);
     opts.users = function () {
@@ -66,44 +64,40 @@ module.exports = function (opts) {
     return findUser(email)
       .then(function (user) {
         if (!user) {
-          throw err('ENOUSER', 'user not found');
+          throw error('ENOUSER', 'user not found');
         }
         return Promise.all([user, makeSession(email)]);
       })
       .then(function ([user, session]) {
+        var actions = [];
         if (['staging', 'production'].includes(opts.env)) {
-          return sendSigninEmail(email, session.jti);
+          return sendSigninEmail(email, session.jti).then(function () {
+            return session;
+          });
         }
-        console.log('send signin email', session);
+        return session;
       });
   }
 
   function exchange(jti) {
-    var fn = opts.dir + String(jti);
+    jti = String(jti);
     return expireUnclaimedSession(jti)
       .then(function () {
-        return fs.promises.stat(fn);
+        return opts.storage.getSession(jti);
       })
-      .then(function (exists) {
-        if (!exists) {
-          throw err('ENOENT', 'jti does not exist');
+      .then(function (session) {
+        if (session && session.claimedAt) {
+          throw error('EALCLM', 'session already claimed');
         }
-        return fs.promises.readFile(fn);
+        return Promise.all([session, findUser(session.email)]);
       })
-      .then(function (data) {
-        var obj = JSON.parse(data);
-        if (obj.claimedAt) {
-          throw err('EALCLM', 'already claimed');
-        }
-        return Promise.all([obj, findUser(obj.email)]);
-      })
-      .then(function ([obj, user]) {
+      .then(function ([session, user]) {
         if (!user) {
-          throw err('ENOUSR', 'user does not exist');
+          throw error('ENOUSR', 'user does not exist');
         }
-        obj.claimedAt = new Date();
+        session.claimedAt = new Date();
         var token = jsonwebtoken.sign({ user }, opts.secret, { jwtid: jti });
-        return fs.promises.writeFile(fn, JSON.stringify(obj)).then(function () {
+        return opts.storage.saveSession(session).then(function () {
           return token;
         });
       });
@@ -123,43 +117,28 @@ module.exports = function (opts) {
 
   function verify(token) {
     return jwtVerify(token).then(function (decoded) {
-      var fn = path.join(opts.dir, String(decoded.jti));
-      return fs.promises.stat(fn).then(function () {
+      return opts.storage.getSession(decoded.jti).then(function (session) {
+        if (!session) {
+          throw error(null, 'token valid, but session does not exist');
+        }
         return decoded;
       });
     });
   }
 
   function signout(token) {
-    var fn;
-    return verify(token)
-      .then(function (token) {
-        if (!token) {
-          throw err('ENOENT', 'token not found');
-        }
-        fn = opts.dir + String(token.jti);
-        return fs.promises.stat(fn);
-      })
-      .then(function (exists) {
-        if (exists) {
-          return fs.promises.unlink(fn);
-        }
-      })
-      .catch(function (err) {
-        if (err.code == 'ENOENT') {
-          return null;
-        }
-        throw err;
-      });
+    return verify(token).then(function (session) {
+      return opts.storage.deleteSession(session.jti);
+    });
   }
 
   function makeSession(email) {
     var jti = String(random());
-    return fs.promises
-      .readdir(opts.dir)
+    return opts.storage
+      .allJtis()
       .then(function (existingJtis) {
         if (existingJtis.includes(jti)) {
-          throw err('DUP', 'jti already exists');
+          throw error('DUP', 'jti already exists');
         }
         return Promise.all(
           existingJtis.map(function (jti) {
@@ -173,11 +152,9 @@ module.exports = function (opts) {
           jti,
           createdAt: new Date()
         };
-        return fs.promises
-          .writeFile(path.join(opts.dir, jti), JSON.stringify(session))
-          .then(function () {
-            return session;
-          });
+        return opts.storage.saveSession(session).then(function () {
+          return session;
+        });
       })
       .catch(function (err) {
         if (err.code == 'DUP') {
@@ -188,34 +165,22 @@ module.exports = function (opts) {
   }
 
   function expireUnclaimedSession(jti) {
-    var fn = path.join(opts.dir, String(jti));
-    return fs.promises
-      .stat(fn)
-      .then(function (exists) {
-        if (!exists) {
-          throw err('ENOENT', 'jti not found');
+    jti = String(jti);
+    return opts.storage.getSession(jti).then(function (session) {
+      if (session) {
+        var unclaimed = !session.claimedAt;
+        var expired =
+          new Date() - new Date(session.createdAt) > opts.signinTimeout;
+        if (unclaimed && expired) {
+          return opts.storage.deleteSession(session.jti);
         }
-        return fs.promises.readFile(fn).then(function (data) {
-          var obj = JSON.parse(data);
-          var unclaimed = !obj.claimedAt;
-          var expired =
-            new Date() - new Date(obj.createdAt) > opts.signinTimeout;
-          if (unclaimed && expired) {
-            return fs.promises.unlink(fn);
-          }
-        });
-      })
-      .catch(function (err) {
-        if (err.code == 'ENOENT') {
-          return null;
-        }
-        throw err;
-      });
+      }
+      return Promise.resolve();
+    });
   }
 
   function sendSigninEmail(email, jti) {
     jti = String(jti);
-
     return templates().then(function (ts) {
       var data = {
         from: `${opts.app} <no-reply@${opts.mailgunDomain || opts.domain}>`,
@@ -241,10 +206,12 @@ module.exports = function (opts) {
   return { signin, exchange, verify, signout };
 };
 
-function err(code, message) {
-  var e = new Error(message);
-  e.code = code;
-  return e;
+function error(code, description) {
+  var _err = new Error('@ryanburnette/authentication: ' + description);
+  if (code) {
+    _err.code = code;
+  }
+  return _err;
 }
 
 function clone(obj) {

@@ -3,3 +3,4 @@ test/
 .env
 .jshintrc
 .prettierrc
+*.test.js
