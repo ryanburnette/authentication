@@ -22,6 +22,7 @@ If you're thinking about using this on your production app, don't.
   for a user object is `email`. Everything in the user object is encoded into
   the tokens.
 - `mailgunApiKey` **required**
+- `mailgunDomain` If different from `opts.domain`.
 - `secret` Randomly generated if not provided.
 - `signinTimeout` Time in milliseconds for a sign in request to expire. Defaults
   to 10 minutes.

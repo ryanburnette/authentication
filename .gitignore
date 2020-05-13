@@ -1,3 +1,4 @@
 node_modules/
 .authentication/
 .env
+package-lock.json

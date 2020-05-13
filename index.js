@@ -31,15 +31,17 @@ module.exports = function (opts) {
     opts.env = 'development';
   }
 
-  ['users', 'domain'].forEach(function (el) {
-    if (!opts[el]) {
-      throw new Error(`opts.${el} is required`);
-    }
-  });
+  if (!opts.users) {
+    throw new Error('opts.users is required');
+  }
+
+  if (!opts.domain) {
+    throw new Error('opts.domain is required');
+  }
 
   opts.mailgun = mailgun({
     apiKey: opts.mailgunApiKey,
-    domain: opts.domain
+    domain: opts.mailgunDomain || opts.domain
   });
 
   if (Array.isArray(opts.users)) {
@@ -204,7 +206,7 @@ module.exports = function (opts) {
 
     return templates().then(function (ts) {
       var data = {
-        from: `${opts.app} no-reply@${opts.domain}`,
+        from: `${opts.app} <no-reply@${opts.mailgunDomain || opts.domain}>`,
         to: email,
         subject: `Sign In to ${opts.app} ${jti}`,
         html: ejs.render(ts.html, { opts, jti }),
