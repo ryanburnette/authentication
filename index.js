@@ -71,11 +71,10 @@ module.exports = function (opts) {
         return Promise.all([user, makeSession(email)]);
       })
       .then(function ([user, session]) {
-        if (opts.env == 'production') {
+        if (['staging', 'production'].includes(opts.env)) {
           return sendSigninEmail(email, session.jti);
-        } else {
-          console.log('send signin email', session);
         }
+        console.log('send signin email', session);
       });
   }
 

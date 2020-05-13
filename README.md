@@ -26,8 +26,9 @@ If you're thinking about using this on your production app, don't.
 - `secret` Randomly generated if not provided.
 - `signinTimeout` Time in milliseconds for a sign in request to expire. Defaults
   to 10 minutes.
-- `env` In `development` you get console logging to simulate the sign in
-  process. In `production` you get emails. Defaults to `development`.
+- `env` In `development` you get a console log of the signin object to simulate
+  the sign in process. In `staging` and `production` get emails. Defaults to
+  `development`.
 - `dir` The directory to keep the session details in. Defaults to
   `./authentication/`.
 
