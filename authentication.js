@@ -6,11 +6,7 @@ var jsonwebtoken = require('jsonwebtoken');
 var mailgun = require('mailgun-js');
 var ejs = require('ejs');
 
-module.exports = function (opts) {
-  if (!opts) {
-    throw new Error('opts is required');
-  }
-
+module.exports = function (opts = {}) {
   if (!opts.secret) {
     opts.secret = String(random() + random() + random() + random());
   }
@@ -19,9 +15,7 @@ module.exports = function (opts) {
     opts.signinTimeout = 600000;
   }
 
-  if (!opts.env) {
-    opts.env = 'development';
-  }
+  opts.env = opts.env || 'development';
 
   if (!opts.users) {
     throw new Error('opts.users is required');
@@ -36,20 +30,20 @@ module.exports = function (opts) {
     domain: opts.mailgunDomain || opts.domain
   });
 
-  if (!opts.storage) {
-    opts.storage = require('./storage-fs')({
+  opts.storage =
+    opts.storage ||
+    require('./storage-fs')({
       dir: opts.dir
     });
-  }
 
   if (Array.isArray(opts.users)) {
     var _users = clone(opts.users);
-    opts.users = function () {
-      return Promise.resolve(_users);
+    opts.users = async function () {
+      return _users;
     };
   }
 
-  function findUser(email) {
+  async function findUser(email) {
     return opts.users().then(function (users) {
       var u = users.find(function (el) {
         return email == el.email;
@@ -60,7 +54,7 @@ module.exports = function (opts) {
     });
   }
 
-  function signin(email) {
+  async function signin(email) {
     return findUser(email)
       .then(function (user) {
         if (!user) {
@@ -71,8 +65,8 @@ module.exports = function (opts) {
       .then(function ([user, session]) {
         var actions = [];
         if (['staging', 'production'].includes(opts.env)) {
-          return sendSigninEmail(email, session.jti).then(function () {
-            return session;
+          return sendSigninEmail(email, session.jti).then(function (email) {
+            return { session, email };
           });
         }
         return session;
@@ -183,9 +177,9 @@ module.exports = function (opts) {
     jti = String(jti);
     return templates().then(function (ts) {
       var data = {
-        from: `${opts.app} <no-reply@${opts.mailgunDomain || opts.domain}>`,
+        from: `${opts.name} <no-reply@${opts.mailgunDomain || opts.domain}>`,
         to: email,
-        subject: `Sign In to ${opts.app} ${jti}`,
+        subject: `Sign In to ${opts.name} ${jti}`,
         html: ejs.render(ts.html, { opts, jti }),
         text: ejs.render(ts.text, { opts, jti })
       };
@@ -223,11 +217,10 @@ function random() {
 }
 
 var ts;
-function templates() {
+async function templates() {
   if (ts) {
-    return Promise.resolve(ts);
+    return ts;
   }
-
   return Promise.all([
     fs.promises.readFile(path.resolve(__dirname, './email.html')),
     fs.promises.readFile(path.resolve(__dirname, './email.txt'))
