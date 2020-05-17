@@ -1,16 +1,10 @@
 'use strict';
 
-var fs = require('fs');
-var path = require('path');
-var jsonwebtoken = require('jsonwebtoken');
-var mailgun = require('mailgun-js');
-var ejs = require('ejs');
+var crypto = require('crypto');
+var newError = require('./lib/error');
+var merge = require('lodash.merge');
 
 module.exports = function (opts = {}) {
-  if (!opts.secret) {
-    opts.secret = String(random() + random() + random() + random());
-  }
-
   if (!opts.signinTimeout) {
     opts.signinTimeout = 600000;
   }
@@ -25,207 +19,165 @@ module.exports = function (opts = {}) {
     throw new Error('opts.domain is required');
   }
 
-  opts.mailgun = mailgun({
-    apiKey: opts.mailgunApiKey,
-    domain: opts.mailgunDomain || opts.domain
-  });
-
-  opts.storage =
-    opts.storage ||
-    require('./storage-fs')({
-      dir: opts.dir
-    });
-
   if (Array.isArray(opts.users)) {
-    var _users = clone(opts.users);
-    opts.users = async function () {
-      return _users;
-    };
+    opts.users = require('./users')(opts.users);
+  } else {
+    if (!opts.users.all) {
+      throw new Error(
+        'opts.users.all must be an async function that returns the users'
+      );
+    }
+    if (!opts.users.find) {
+      throw new Error(
+        'opts.users.find must be an async function that takes an email address and returns a user'
+      );
+    }
   }
 
-  async function findUser(email) {
-    return opts.users().then(function (users) {
-      var u = users.find(function (el) {
-        return email == el.email;
-      });
-      if (u) {
-        return clone(u);
-      }
-    });
+  if (!opts.storage) {
+    opts.storage = require('./storage-fs')({ dir: opts.dir });
+  } else {
+    if (!opts.storage.find) {
+      throw new Error(
+        'opts.storage.find must be an async function that takes a signinToken and returns a session'
+      );
+    }
+    if (!opts.storage.save) {
+      throw new Error(
+        'opts.storage.save must be an async function that takes a session'
+      );
+    }
+    if (!opts.storage.delete) {
+      throw new Error(
+        'opts.storage.delete must be an async function that takes a signinToken'
+      );
+    }
   }
 
-  async function signin(email) {
-    return findUser(email)
+  if (!opts.email) {
+    opts.email = require('./email')(opts);
+  }
+
+  async function signin({ email, attrs }) {
+    return opts.users
+      .find(email)
       .then(function (user) {
         if (!user) {
-          throw error('ENOUSER', 'user not found');
+          throw newError('ENOUSER', 'user not found');
         }
-        return Promise.all([user, makeSession(email)]);
+        return Promise.all([user, makeSession({ email, attrs })]);
       })
       .then(function ([user, session]) {
-        var actions = [];
-        if (['staging', 'production'].includes(opts.env)) {
-          return sendSigninEmail(email, session.jti).then(function (email) {
+        return Promise.all([user, opts.storage.save(session)]);
+      })
+      .then(function ([user, session]) {
+        if (opts.env === 'development') {
+          return { session };
+        }
+        return opts
+          .email({ email, signinToken: session.signinToken })
+          .then(function (email) {
             return { session, email };
           });
-        }
-        return session;
       });
   }
 
-  function exchange(jti) {
-    jti = String(jti);
-    return expireUnclaimedSession(jti)
-      .then(function () {
-        return opts.storage.getSession(jti);
-      })
+  async function exchange({ signinToken, attrs }) {
+    return opts.storage
+      .find(signinToken)
       .then(function (session) {
-        if (session && session.claimedAt) {
-          throw error('EALCLM', 'session already claimed');
+        if (!session) {
+          throw newError('ENOENT', 'this session does not exist');
         }
-        return Promise.all([session, findUser(session.email)]);
+        if (session.claimedAt) {
+          throw newError(
+            'ERR_SESSION_CLAIMED',
+            'this signinToken has already been exchanged for an authorizationToken'
+          );
+        }
+        if (new Date() - new Date(session.createdAt) > opts.signinTimeout) {
+          throw newError('ERR_SIGNIN_EXPIRED', 'this signin has expired');
+        }
+        return Promise.all([session, opts.users.find(session.email)]);
       })
       .then(function ([session, user]) {
         if (!user) {
-          throw error('ENOUSR', 'user does not exist');
+          throw newError(
+            'ERR_USER_NOT_FOUND',
+            'this session belongs to a user that does not exist'
+          );
         }
         session.claimedAt = new Date();
-        var token = jsonwebtoken.sign({ user }, opts.secret, { jwtid: jti });
-        return opts.storage.saveSession(session).then(function () {
-          return token;
+        merge(session.attrs, attrs);
+        session.authorizationToken = crypto.randomBytes(128).toString('hex');
+        session.token = signinToken + '0' + session.authorizationToken;
+        return opts.storage.save(session).then(function (session) {
+          return { session, user };
         });
       });
   }
 
-  function jwtVerify(token) {
-    return new Promise(function (resolve, reject) {
-      jsonwebtoken.verify(token, opts.secret, function (err, decoded) {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(decoded);
-        }
-      });
-    });
-  }
-
-  function verify(token) {
-    return jwtVerify(token).then(function (decoded) {
-      return opts.storage.getSession(decoded.jti).then(function (session) {
-        if (!session) {
-          throw error(null, 'token valid, but session does not exist');
-        }
-        return decoded;
-      });
-    });
-  }
-
-  function signout(token) {
-    return verify(token).then(function (session) {
-      return opts.storage.deleteSession(session.jti);
-    });
-  }
-
-  function makeSession(email) {
-    var jti = String(random());
+  async function verify(token) {
+    if (token.length != 269) {
+      throw newError('ERR_INVALID_TOKEN', 'invalid token');
+    }
+    if (token.substring(12, 13) != '0') {
+      throw newError('ERR_INVALID_TOKEN', 'invalid token');
+    }
+    var signinToken = token.substring(0, 12);
+    var authorizationToken = token.substring(13, 269);
     return opts.storage
-      .allJtis()
-      .then(function (existingJtis) {
-        if (existingJtis.includes(jti)) {
-          throw error('DUP', 'jti already exists');
+      .find(signinToken)
+      .then(function (session) {
+        if (!session) {
+          throw newError('ERR_SESSION_NOT_FOUND', 'session not found');
         }
-        return Promise.all(
-          existingJtis.map(function (jti) {
-            return expireUnclaimedSession(jti);
-          })
-        );
-      })
-      .then(function () {
-        var session = {
-          email,
-          jti,
-          createdAt: new Date()
-        };
-        return opts.storage.saveSession(session).then(function () {
-          return session;
-        });
-      })
-      .catch(function (err) {
-        if (err.code == 'DUP') {
-          return makeSession(email);
+        if (authorizationToken != session.authorizationToken) {
+          throw newError('ERR_INVALID_TOKEN', 'invalid token');
         }
-        throw err;
+        if (!session.claimedAt) {
+          throw newError('ERR_NOT_CLAIMED', 'this session was never claimed');
+        }
+        if (
+          opts.sessionTimeout &&
+          new Date() - new Date(session.claimedAt) > opts.sessionTimeout
+        ) {
+          throw newError('ERR_SESSION_EXPIRED', 'this signinToken has expired');
+        }
+        return Promise.all([session, opts.users.find(session.email)]);
+      })
+      .then(function ([session, user]) {
+        if (!user) {
+          throw newError('ERR_USER_NOT_FOUND', 'user not found');
+        }
+        return { session, user };
       });
   }
 
-  function expireUnclaimedSession(jti) {
-    jti = String(jti);
-    return opts.storage.getSession(jti).then(function (session) {
-      if (session) {
-        var unclaimed = !session.claimedAt;
-        var expired =
-          new Date() - new Date(session.createdAt) > opts.signinTimeout;
-        if (unclaimed && expired) {
-          return opts.storage.deleteSession(session.jti);
-        }
+  async function signout(signinToken) {
+    return opts.storage.find(signinToken).then(function (session) {
+      if (!session) {
+        throw newError('ENOENT', 'session not found');
       }
-      return Promise.resolve();
+      return opts.storage.delete(session.signinToken);
     });
   }
 
-  function sendSigninEmail(email, jti) {
-    jti = String(jti);
-    return templates().then(function (ts) {
-      var data = {
-        from: `${opts.name} <no-reply@${opts.mailgunDomain || opts.domain}>`,
-        to: email,
-        subject: `Sign In to ${opts.name} ${jti}`,
-        html: ejs.render(ts.html, { opts, jti }),
-        text: ejs.render(ts.text, { opts, jti })
+  async function makeSession({ email, attrs }) {
+    var signinToken = crypto.randomBytes(6).toString('hex');
+    var createdAt = new Date();
+    return opts.storage.find(signinToken).then(function (dup) {
+      if (dup) {
+        return makeSession({ email, attrs });
+      }
+      return {
+        email,
+        attrs,
+        signinToken,
+        createdAt
       };
-
-      return new Promise(function (resolve, reject) {
-        opts.mailgun.messages().send(data, function (error, body) {
-          if (error) {
-            reject(error);
-          }
-          resolve(body);
-        });
-      });
     });
   }
-
-  // TODO token expiration
 
   return { signin, exchange, verify, signout };
 };
-
-function error(code, description) {
-  var _err = new Error('@ryanburnette/authentication: ' + description);
-  if (code) {
-    _err.code = code;
-  }
-  return _err;
-}
-
-function clone(obj) {
-  return JSON.parse(JSON.stringify(obj));
-}
-
-function random() {
-  return Math.floor(100000 + Math.random() * 900000);
-}
-
-var ts;
-async function templates() {
-  if (ts) {
-    return ts;
-  }
-  return Promise.all([
-    fs.promises.readFile(path.resolve(__dirname, './email.html')),
-    fs.promises.readFile(path.resolve(__dirname, './email.txt'))
-  ]).then(function ([html, text]) {
-    ts = { html: html.toString(), text: text.toString() };
-    return ts;
-  });
-}
