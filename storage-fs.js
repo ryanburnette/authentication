@@ -7,13 +7,9 @@ var newError = require('./lib/error');
 module.exports = function (opts = {}) {
   var obj = {};
 
-  function setDefault(k, v) {
-    if (!opts[k]) {
-      opts[k] = v;
-    }
+  if (!opts.dir) {
+    opts.dir = './.authentication/';
   }
-
-  setDefault('dir', './.authentication/');
 
   if (!fs.existsSync(opts.dir)) {
     fs.mkdirSync(opts.dir);
