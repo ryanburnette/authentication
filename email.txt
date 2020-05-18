@@ -1,5 +1,6 @@
-You requested a sign in link for <%= opts.app %>. Go to the following link to sign in.
+You requested a sign in link for <%= opts.name %>. Go to the following link to sign in.
 
-https://<%= opts.domain %>/signin/#<%= jti %>
+<%= url %>
 
-This link will expire in 10 minutes. If you did not request this link, disregard this email.
+This sign in link will expire in a few moments. If you don't use it now,
+you'll need to request another. Don't share your sign in link with anyone.

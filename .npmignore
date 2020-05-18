@@ -1,6 +1,6 @@
 .authentication/
-test/
 .env
 .jshintrc
 .prettierrc
 *.test.js
+package-lock.json
