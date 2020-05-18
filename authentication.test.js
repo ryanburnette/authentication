@@ -41,6 +41,17 @@ test('signin', function () {
     });
 });
 
+test('signin no user', function () {
+  return auth
+    .signin({ email: 'foobar@gmail.com' })
+    .then(function () {
+      fail('should not resolve if user does not exist');
+    })
+    .catch(function (error) {
+      expect(error.code).toBe('ENOUSER');
+    });
+});
+
 var testToken;
 test('exchange', function () {
   var attrs = { a: 'aa', b: 'b' };
