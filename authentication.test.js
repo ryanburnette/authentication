@@ -68,7 +68,18 @@ test('verify invalid token', function () {
   return auth
     .verify('000')
     .then(function () {
-      throw new Error('should not get here');
+      fail('should not verify with invalid token');
+    })
+    .catch(function (error) {
+      expect(error.code).toBe('ERR_INVALID_TOKEN');
+    });
+});
+
+test('fails using signinToken', function () {
+  return auth
+    .verify(signinToken)
+    .then(function () {
+      fail('should not verify with invalid token');
     })
     .catch(function (error) {
       expect(error.code).toBe('ERR_INVALID_TOKEN');
