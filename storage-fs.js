@@ -33,15 +33,26 @@ module.exports = function (opts = {}) {
         return JSON.parse(data);
       })
       .catch(function (error) {
-        return false;
+        if (error.code === 'ENOENT') {
+          return false;
+        }
+        throw error;
       });
   };
 
   obj.delete = async function (signinToken) {
     var fn = path.join(opts.dir, signinToken);
-    if (fs.existsSync(fn)) {
-      return fs.promises.unlink(fn);
-    }
+    return fs.promises
+      .stat(fn)
+      .then(function (exists) {
+        return fs.promises.unlink(fn);
+      })
+      .catch(function (error) {
+        if (error.code === 'ENOENT') {
+          return false;
+        }
+        throw error;
+      });
   };
 
   return obj;
