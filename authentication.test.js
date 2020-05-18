@@ -16,7 +16,12 @@ var users = [
 ];
 
 test('init', function () {
-  auth = Authentication({ users, domain: 'localhost', mailgunApiKey: '123' });
+  auth = Authentication({
+    name: 'Test App',
+    users,
+    domain: 'localhost',
+    mailgunApiKey: '123'
+  });
   expect(auth).toBeTruthy();
 });
 
@@ -72,6 +77,7 @@ test('verify invalid token', function () {
 
 test('signinTimeout', function () {
   var auth = Authentication({
+    name: 'Test App',
     users,
     domain: 'localhost',
     mailgunApiKey: '123',
@@ -95,6 +101,7 @@ test('signinTimeout', function () {
 
 test('sessionTimeout', function () {
   var auth = Authentication({
+    name: 'Test App',
     users,
     domain: 'localhost',
     mailgunApiKey: '123',
