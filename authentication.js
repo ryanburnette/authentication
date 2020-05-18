@@ -9,14 +9,12 @@ module.exports = function (opts = {}) {
     opts.signinTimeout = 600000;
   }
 
-  opts.env = opts.env || 'development';
+  if (!opts.env) {
+    opts.env = 'development';
+  }
 
   if (!opts.users) {
     throw new Error('opts.users is required');
-  }
-
-  if (!opts.domain) {
-    throw new Error('opts.domain is required');
   }
 
   if (Array.isArray(opts.users)) {

@@ -1,4 +1,4 @@
-node_modules/
 .authentication/
 .env
+node_modules/
 package-lock.json

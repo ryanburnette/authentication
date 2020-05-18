@@ -3,6 +3,7 @@
   "esversion": 8,
   "globals": {
     "test": true,
-    "expect": true
+    "expect": true,
+    "fail": true
   }
 }

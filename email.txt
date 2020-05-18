@@ -1,4 +1,4 @@
-You requested a sign in link for <%= opts.app %>. Go to the following link to sign in.
+You requested a sign in link for <%= opts.name %>. Go to the following link to sign in.
 
 <%= url %>
 

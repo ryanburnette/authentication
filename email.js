@@ -6,6 +6,18 @@ var mailgun = require('mailgun-js');
 var ejs = require('ejs');
 
 module.exports = function (opts) {
+  if (!opts.name) {
+    throw new Error('opts.name is required');
+  }
+
+  if (!opts.domain) {
+    throw new Error('opts.domain is required');
+  }
+
+  if (!opts.signinUrl) {
+    opts.signinUrl = '/';
+  }
+
   if (!opts.mailgun) {
     opts.mailgun = mailgun({
       apiKey: opts.mailgunApiKey,
@@ -17,8 +29,7 @@ module.exports = function (opts) {
     return templates().then(function (templates) {
       var proto = opts.env == 'development' ? 'http' : 'https';
       var url =
-        proto + '://' + opts.domain + opts.signinUrl ||
-        '/' + '/#' + signinToken;
+        proto + '://' + opts.domain + opts.signinUrl + '#' + signinToken;
       var data = {
         from: `${opts.name} <no-reply@${opts.mailgunDomain || opts.domain}>`,
         to: email,
@@ -26,7 +37,6 @@ module.exports = function (opts) {
         html: ejs.render(templates.html, { opts, url }),
         text: ejs.render(templates.text, { opts, url })
       };
-
       return new Promise(function (resolve, reject) {
         opts.mailgun.messages().send(data, function (error, body) {
           if (error) {

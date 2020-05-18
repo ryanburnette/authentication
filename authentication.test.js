@@ -69,3 +69,62 @@ test('verify invalid token', function () {
       expect(error.code).toBe('ERR_INVALID_TOKEN');
     });
 });
+
+test('signinTimeout', function () {
+  var auth = Authentication({
+    users,
+    domain: 'localhost',
+    mailgunApiKey: '123',
+    signinTimeout: 1000
+  });
+  return auth
+    .signin({ email: 'ryan.burnette@gmail.com' })
+    .then(function ({ session }) {
+      return Promise.all([session, awaitTimeout(2000)]);
+    })
+    .then(function ([session, timeout]) {
+      return auth.exchange({ signinToken: session.signinToken });
+    })
+    .then(function () {
+      fail('signinTimeout should have caused an error to be thrown');
+    })
+    .catch(function (error) {
+      expect(error.code).toBe('ERR_SIGNIN_EXPIRED');
+    });
+});
+
+test('sessionTimeout', function () {
+  var auth = Authentication({
+    users,
+    domain: 'localhost',
+    mailgunApiKey: '123',
+    sessionTimeout: 1000
+  });
+  var token;
+  return auth
+    .signin({ email: 'ryan.burnette@gmail.com' })
+    .then(function ({ session }) {
+      return auth.exchange({ signinToken: session.signinToken });
+    })
+    .then(function ({ session }) {
+      return Promise.all([session, awaitTimeout(2000)]);
+    })
+    .then(function ([session, timeout]) {
+      token = session.token;
+      return auth.verify(token);
+    })
+    .then(function ({ session }) {
+      fail('sessionTimeout should have caused an error to be thrown');
+    })
+    .catch(function (error) {
+      expect(error.code).toBe('ERR_SESSION_EXPIRED');
+    });
+});
+
+function awaitTimeout(timeout) {
+  return new Promise(function (resolve) {
+    setTimeout(function () {
+      resolve();
+    }, timeout);
+  });
+}
