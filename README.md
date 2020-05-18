@@ -61,10 +61,10 @@ some of the apps I build.
 Async functions provided by the returned object that are used in an
 implementation.
 
-- `signin({ email, [attrs] })` Start the sign in process. Email the user a
+- `signin({ email, attrs })` Start the sign in process. Email the user a
   signinToken. Resolves the resulting session and email object from mailgun, if
   using built-in email and not in development environment.
-- `exchange({ signinToken, [attrs] })` Complete the sign in process. Exchange a
+- `exchange({ signinToken, attrs })` Complete the sign in process. Exchange a
   signinToken for an authorizationToken. Resolves the session and user.
 - `verify(token)` Verify a token. Resolves the session and user. Throws errors
   for all failures. Catch!
