@@ -5,8 +5,6 @@ var path = require('path');
 var newError = require('./lib/error');
 
 module.exports = function (opts = {}) {
-  var obj = {};
-
   if (!opts.dir) {
     opts.dir = './.authentication/';
   }
@@ -15,7 +13,7 @@ module.exports = function (opts = {}) {
     fs.mkdirSync(opts.dir);
   }
 
-  obj.save = async function (session) {
+  async function save(session) {
     return fs.promises
       .writeFile(
         path.join(opts.dir, session.signinToken),
@@ -24,9 +22,9 @@ module.exports = function (opts = {}) {
       .then(function () {
         return session;
       });
-  };
+  }
 
-  obj.find = async function (signinToken) {
+  async function find(signinToken) {
     return fs.promises
       .readFile(path.join(opts.dir, signinToken), 'utf8')
       .then(function (data) {
@@ -38,13 +36,13 @@ module.exports = function (opts = {}) {
         }
         throw error;
       });
-  };
+  }
 
-  obj.delete = async function (signinToken) {
+  async function remove(signinToken) {
     var fn = path.join(opts.dir, signinToken);
     return fs.promises
       .stat(fn)
-      .then(function (exists) {
+      .then(function () {
         return fs.promises.unlink(fn);
       })
       .catch(function (error) {
@@ -53,7 +51,7 @@ module.exports = function (opts = {}) {
         }
         throw error;
       });
-  };
+  }
 
-  return obj;
+  return { save, find, remove };
 };

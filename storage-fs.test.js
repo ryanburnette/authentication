@@ -37,9 +37,9 @@ test('find', function () {
   });
 });
 
-test('delete', function () {
+test('remove', function () {
   return storage
-    .delete('456')
+    .remove('456')
     .then(function () {
       return storage.find('456');
     })

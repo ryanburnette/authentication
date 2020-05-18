@@ -45,9 +45,9 @@ module.exports = function (opts = {}) {
         'opts.storage.save must be an async function that takes a session'
       );
     }
-    if (!opts.storage.delete) {
+    if (!opts.storage.remove) {
       throw new Error(
-        'opts.storage.delete must be an async function that takes a signinToken'
+        'opts.storage.remove must be an async function that takes a signinToken'
       );
     }
   }
@@ -157,7 +157,7 @@ module.exports = function (opts = {}) {
       if (!session) {
         throw newError('ENOENT', 'session not found');
       }
-      return opts.storage.delete(session.signinToken);
+      return opts.storage.remove(session.signinToken);
     });
   }
 
