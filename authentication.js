@@ -61,7 +61,7 @@ module.exports = function (opts = {}) {
       .find(email)
       .then(function (user) {
         if (!user) {
-          throw newError('ENOUSER', 'user not found');
+          throw newError('ERR_USER_NOT_FOUND', 'user not found');
         }
         return Promise.all([user, makeSession({ email, attrs })]);
       })
@@ -85,7 +85,10 @@ module.exports = function (opts = {}) {
       .find(signinToken)
       .then(function (session) {
         if (!session) {
-          throw newError('ENOENT', 'this session does not exist');
+          throw newError(
+            'ERR_SESSION_NOT_FOUND',
+            'this session does not exist'
+          );
         }
         if (session.claimedAt) {
           throw newError(
@@ -155,7 +158,7 @@ module.exports = function (opts = {}) {
   async function signout(signinToken) {
     return opts.sessions.find(signinToken).then(function (session) {
       if (!session) {
-        throw newError('ENOENT', 'session not found');
+        throw newError('ERR_SESSION_NOT_FOUND', 'session not found');
       }
       return opts.sessions.remove(session.signinToken);
     });

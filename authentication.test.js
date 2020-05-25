@@ -48,7 +48,7 @@ test('signin no user', function () {
       fail('should not resolve if user does not exist');
     })
     .catch(function (error) {
-      expect(error.code).toBe('ENOUSER');
+      expect(error.code).toBe('ERR_USER_NOT_FOUND');
     });
 });
 

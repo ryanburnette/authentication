@@ -69,3 +69,15 @@ implementation.
 - `verify(token)` Verify a token. Resolves the session and user. Throws errors
   for all failures. Catch!
 - `signout(signinToken)` Destroy the session associated with this token.
+
+## Error Codes
+
+This library will throw these error codes. Watch for them and reveal to the
+client what you choose to.
+
+- `ERR_USER_NOT_FOUND` User not found.
+- `ERR_SESSION_NOT_FOUND` Session not found.
+- `ERR_SESSION_CLAIMED` Session already claimed.
+- `ERR_SIGNIN_EXPIRED` Sign In expired.
+- `ERR_INVALID_TOKEN` Invalid token.
+- `ERR_NOT_CLAIMED` This session was never claimed. We should never get this error.
