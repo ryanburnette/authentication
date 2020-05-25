@@ -27,12 +27,12 @@ some of the apps I build.
   long a token is valid for beginning with when it was issued. Sessions won't
   expire unless this is provided.
 
-### Session Storage
+### Sessions
 
-- `dir` If using built-in storage, this is the directory to keep the session
-  details in. Defaults to `./authentication/`.
-- `storage` If built-in storage is not to be used, override it by providing an
-  object here. Take a look at `storage-fs.js` to see what functions must be
+- `dir` If using built-in sessions, this is the directory to keep the session
+  details in. Defaults to `./.authentication/`.
+- `sessions` If built-in sessions is not to be used, override it by providing an
+  object here. Take a look at `sessions-fs.js` to see what functions must be
   present and how they should behave.
 
 ### Email Sending

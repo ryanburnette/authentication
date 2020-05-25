@@ -32,22 +32,22 @@ module.exports = function (opts = {}) {
     }
   }
 
-  if (!opts.storage) {
-    opts.storage = require('./storage-fs')({ dir: opts.dir });
+  if (!opts.sessions) {
+    opts.sessions = require('./sessions-fs')({ dir: opts.dir });
   } else {
-    if (!opts.storage.find) {
+    if (!opts.sessions.find) {
       throw new Error(
-        'opts.storage.find must be an async function that takes a signinToken and returns a session'
+        'opts.sessions.find must be an async function that takes a signinToken and returns a session'
       );
     }
-    if (!opts.storage.save) {
+    if (!opts.sessions.save) {
       throw new Error(
-        'opts.storage.save must be an async function that takes a session'
+        'opts.sessions.save must be an async function that takes a session'
       );
     }
-    if (!opts.storage.remove) {
+    if (!opts.sessions.remove) {
       throw new Error(
-        'opts.storage.remove must be an async function that takes a signinToken'
+        'opts.sessions.remove must be an async function that takes a signinToken'
       );
     }
   }
@@ -66,7 +66,7 @@ module.exports = function (opts = {}) {
         return Promise.all([user, makeSession({ email, attrs })]);
       })
       .then(function ([user, session]) {
-        return Promise.all([user, opts.storage.save(session)]);
+        return Promise.all([user, opts.sessions.save(session)]);
       })
       .then(function ([user, session]) {
         if (opts.env === 'development') {
@@ -81,7 +81,7 @@ module.exports = function (opts = {}) {
   }
 
   async function exchange({ signinToken, attrs }) {
-    return opts.storage
+    return opts.sessions
       .find(signinToken)
       .then(function (session) {
         if (!session) {
@@ -109,7 +109,7 @@ module.exports = function (opts = {}) {
         merge(session.attrs, attrs);
         session.authorizationToken = crypto.randomBytes(128).toString('hex');
         session.token = signinToken + '0' + session.authorizationToken;
-        return opts.storage.save(session).then(function (session) {
+        return opts.sessions.save(session).then(function (session) {
           return { session, user };
         });
       });
@@ -124,7 +124,7 @@ module.exports = function (opts = {}) {
     }
     var signinToken = token.substring(0, 12);
     var authorizationToken = token.substring(13, 269);
-    return opts.storage
+    return opts.sessions
       .find(signinToken)
       .then(function (session) {
         if (!session) {
@@ -153,18 +153,18 @@ module.exports = function (opts = {}) {
   }
 
   async function signout(signinToken) {
-    return opts.storage.find(signinToken).then(function (session) {
+    return opts.sessions.find(signinToken).then(function (session) {
       if (!session) {
         throw newError('ENOENT', 'session not found');
       }
-      return opts.storage.remove(session.signinToken);
+      return opts.sessions.remove(session.signinToken);
     });
   }
 
   async function makeSession({ email, attrs }) {
     var signinToken = crypto.randomBytes(6).toString('hex');
     var createdAt = new Date();
-    return opts.storage.find(signinToken).then(function (dup) {
+    return opts.sessions.find(signinToken).then(function (dup) {
       if (dup) {
         return makeSession({ email, attrs });
       }
@@ -177,5 +177,12 @@ module.exports = function (opts = {}) {
     });
   }
 
-  return { signin, exchange, verify, signout };
+  return {
+    signin,
+    exchange,
+    verify,
+    signout,
+    users: opts.users,
+    sessions: opts.sessions
+  };
 };
