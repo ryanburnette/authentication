@@ -21,7 +21,7 @@ module.exports = function (opts) {
   if (!opts.mailgun) {
     opts.mailgun = mailgun({
       apiKey: opts.mailgunApiKey,
-      domain: opts.domain || opts.mailgunDomain
+      domain: opts.mailgunDomain || opts.domain
     });
   }
 
