@@ -64,8 +64,10 @@ implementation.
 - `signin({ email, attrs })` Start the sign in process. Email the user a
   signinToken. Resolves the resulting session and email object from mailgun, if
   using built-in email and not in development environment.
-- `exchange({ signinToken, attrs })` Complete the sign in process. Exchange a
-  signinToken for an authorizationToken. Resolves the session and user.
+- `exchange({ signinToken, attrs, [session] })` Complete the sign in process.
+  Exchange a signinToken for an authorizationToken. Resolves the session and
+  user. Sometimes you're doing things that require looking up the session
+  before you exchange. If you already have the session, you can pass it along.
 - `verify(token)` Verify a token. Resolves the session and user. Throws errors
   for all failures. Catch!
 - `signout(signinToken)` Destroy the session associated with this token.
