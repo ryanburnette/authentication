@@ -37,16 +37,26 @@ some of the apps I build.
 
 ### Email Sending
 
+Configure these options if you are using the built-in email function
+`lib/email.js`.
+
 - `name` **required** The name of the app.
 - `env` Emails are not sent in `development`. Defaults to `development`.
 - `domain` **required** Domain of the app.
-- `mailgunApiKey` **required** Required if using the default emailer.
-- `mailgunDomain` If different from `opts.domain`.
-- `mailgun` If you already have a mailgunjs instance, pass it here.
-  `mailgunApiKey` will no longer be required.
-- `email` Override the built-in email function. None of the normally required
-  options are still required if you override the email function. See `email.js`
-  to write your own.
+- `proto` The protocol of the app. Used by the built-in email delivery function
+  to create `signinLink`.
+
+These options are passed directly to Nodemailer, so take a look at those docs if
+you're using the built-in email delivery function.
+
+- `smtp` **required** Nodemailer options
+- `smtp.host` **required** SMTP host
+- `smtp.port` SMTP port
+- `smtp.secure` SMTP secure (boolean)
+- `smtp.user` SMTP user
+- `smtp.pass` SMTP pass
+
+Or pass in your own email function as `opts.email`.
 
 ## Tokens
 
@@ -62,12 +72,11 @@ Async functions provided by the returned object that are used in an
 implementation.
 
 - `signin({ email, attrs })` Start the sign in process. Email the user a
-  signinToken. Resolves the resulting session and email object from mailgun, if
-  using built-in email and not in development environment.
+  signinToken.
 - `exchange({ signinToken, attrs, [session] })` Complete the sign in process.
   Exchange a signinToken for an authorizationToken. Resolves the session and
-  user. Sometimes you're doing things that require looking up the session
-  before you exchange. If you already have the session, you can pass it along.
+  user. Sometimes you're doing things that require looking up the session before
+  you exchange. If you already have the session, you can pass it along.
 - `verify(token)` Verify a token. Resolves the session and user. Throws errors
   for all failures. Catch!
 - `signout(signinToken)` Destroy the session associated with this token.
@@ -83,4 +92,5 @@ client what you choose to.
 - `ERR_SESSION_NOT_FOUND` Session not found.
 - `ERR_SESSION_CLAIMED` Session already claimed.
 - `ERR_INVALID_TOKEN` Invalid token.
-- `ERR_NOT_CLAIMED` This session was never claimed. We should never get this error.
+- `ERR_NOT_CLAIMED` This session was never claimed. We should never get this
+  error.
