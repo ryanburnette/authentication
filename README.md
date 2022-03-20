@@ -3,6 +3,9 @@
 [![repo](https://img.shields.io/badge/repository-Github-black.svg?style=flat-square)](https://github.com/ryanburnette/authentication)
 [![npm](https://img.shields.io/badge/package-NPM-green.svg?style=flat-square)](https://www.npmjs.com/package/@ryanburnette/authentication)
 
+> This project is archived/deprecated. Use
+> [auth3000](https://github.com/therootcompany/auth3000) instead.
+
 A really simple Node.js Authentication library.
 
 ## About
